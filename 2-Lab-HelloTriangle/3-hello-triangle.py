@@ -8,10 +8,15 @@ g_vertex_shader_src = '''
 // input vertex position. its attribute index is 0.
 layout (location = 0) in vec3 vin_pos; 
 
+// shader code is given by python strings.
+// (optional) You can make separated file saving shader code and link it to python code
+
 void main()
 {
     // gl_Position: built-in output variable of type vec4 to which vertex position in clip space is assigned.
     gl_Position = vec4(vin_pos.x, vin_pos.y, vin_pos.z, 1.0);
+    // gl_Position = vec4(vin_pos.x, -vin_pos.y, vin_pos.z, 1.0); // upside-down triangle
+
 
     // gl_Position.xyz = vin_pos;
     // gl_Position.w = 1.0;
@@ -126,11 +131,11 @@ def main():
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # render
-        glClear(GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT) # clear with black pixels
 
         glUseProgram(shader_program)
         glBindVertexArray(VAO)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_TRIANGLES, 0, 3) # render triangles using the data stored in VAO
 
         # swap front and back buffers
         glfwSwapBuffers(window)

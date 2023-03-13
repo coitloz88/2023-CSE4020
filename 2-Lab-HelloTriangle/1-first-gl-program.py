@@ -26,7 +26,7 @@ def main():
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
-        # render
+        # render code will be written in here
 
         # swap front and back buffers
         glfwSwapBuffers(window)
