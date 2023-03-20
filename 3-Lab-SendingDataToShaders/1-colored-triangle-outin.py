@@ -12,20 +12,21 @@ out vec4 vout_color;
 void main()
 {
     gl_Position = vec4(vin_pos.x, vin_pos.y, vin_pos.z, 1.0);
-    vout_color = vec4(0,1,0,1);
+    vout_color = vec4(0,1,0,1); // green color
 }
 '''
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec4 vout_color; // same name, same type & vertex shader에서의 output을 input으로 받아옴
 
 out vec4 FragColor;
 
 void main()
 {
     FragColor = vout_color;
+    // FragColor = vec4(1,0,0,1); // does not get input color and use red constant
 }
 '''
 
