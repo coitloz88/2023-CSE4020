@@ -172,7 +172,7 @@ def main():
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -180,7 +180,7 @@ def main():
     # get uniform locations
     M_loc = glGetUniformLocation(shader_program, 'M')
     
-    # prepare vaos
+    # prepare vaos: 2개 그릴거라 2개 준비함(본래는 하나에 그려도 되긴한데 성능 고려할게 아니라서 이렇게 함)
     vao_triangle = prepare_vao_triangle()
     vao_frame = prepare_vao_frame()
 
@@ -203,20 +203,24 @@ def main():
         t = glfwGetTime()
 
         # rotation 30 deg
-        th = np.radians(t*90)
+        th = np.radians(t*80)
         R = np.array([[np.cos(th), -np.sin(th), 0.],
                       [np.sin(th),  np.cos(th), 0.],
                       [0.,         0.,          1.]])
 
-        # tranlation by (.5, .2)
-        T = np.array([[1., 0., np.sin(t)],
+        # translation by (.5, .2)
+        T = np.array([[1., 0., .5 * np.sin(t)],
                       [0., 1., .2],
                       [0., 0., 1.]])
+        
+        S = np.array([[1, 0, 0],
+                      [0, np.sin(t) + 1, 0],
+                      [0, 0, 2]])
 
         # M = R
         # M = T
         # M = R @ T   # '@' is matrix-matrix / matrix-vector multiplication operator
-        M = T @ R
+        M = R @ T @ S
 
         # print(M)
 

@@ -108,7 +108,7 @@ def main():
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -160,7 +160,7 @@ def main():
                       [np.sin(th),  np.cos(th), 0.],
                       [0.,         0.,          1.]])
 
-        # tranlation by (.5, .2)
+        # translation by (.5, .2)
         T = np.array([[1., 0., np.sin(t)],
                       [0., 1., .2],
                       [0., 0., 1.]])

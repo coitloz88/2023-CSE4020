@@ -97,7 +97,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '1-linear-transform-2D', None, None)
+    window = glfwCreateWindow(800, 800, '2-linear-transform-2D', None, None)
     if not window:
         glfwTerminate()
         return
@@ -151,7 +151,7 @@ def main():
 
         # note that 'transpose' (3rd parameter) is set to GL_TRUE
         # because numpy array is row-major.
-        glUniformMatrix2fv(M_loc, 1, GL_TRUE, M)
+        glUniformMatrix2fv(M_loc, 1, GL_TRUE, M) # Numpy transpose가 필요할 때, GL_TRUE로 설정?
     else:
         # glm
 
