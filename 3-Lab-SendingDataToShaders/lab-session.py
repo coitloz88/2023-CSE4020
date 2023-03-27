@@ -11,9 +11,11 @@ layout (location = 1) in vec3 vin_color;
 
 out vec4 vout_color;
 
+uniform float transform;
+
 void main()
 {
-    gl_Position = vec4(vin_pos.x, vin_pos.y, vin_pos.z, 1.0);
+    gl_Position = vec4(vin_pos.x + transform, vin_pos.y, vin_pos.z, 1.0);
     vout_color = vec4(vin_color,1); // you can pass a vec3 and a scalar to vec4 constructor
 }
 '''
@@ -25,9 +27,11 @@ in vec4 vout_color;
 
 out vec4 FragColor;
 
+uniform float black;
+
 void main()
 {
-    FragColor = vout_color;
+    FragColor = vec4(vout_color.r - black, vout_color.g - black, vout_color.b - black, 1.0);
 }
 '''
 
@@ -96,10 +100,13 @@ def main():
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
+
+    transform_loc = glGetUniformLocation(shader_program, 'transform')  
+    black_loc = glGetUniformLocation(shader_program, 'black')
 
     # prepare vertex data (in main memory)
     vertices = glm.array(glm.float32,
@@ -134,6 +141,14 @@ def main():
         glClear(GL_COLOR_BUFFER_BIT)
 
         glUseProgram(shader_program)
+
+        t = glfwGetTime()
+        position_update = (glm.sin(t))
+        glUniform1f(transform_loc, position_update)
+
+        black_update = (glm.sin(t) + 1) * 0.5
+        glUniform1f(black_loc, black_update)
+
         glBindVertexArray(VAO)
         glDrawArrays(GL_TRIANGLES, 0, 3)
 
