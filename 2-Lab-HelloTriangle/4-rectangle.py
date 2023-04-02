@@ -100,7 +100,7 @@ def main():
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -110,10 +110,9 @@ def main():
         0.5,  0.5, 0.0, 
         0.5, -0.5, 0.0,
         -0.5,  0.5, 0.0,
-        0.5, 0.5, 0.0,
-        # 0.5, -0.5, 0.0,
-        # -0.5, -0.5, 0.0,
-        # -0.5,  0.5, 0.0,  
+        0.5, -0.5, 0.0,
+        -0.5, -0.5, 0.0,
+        -0.5,  0.5, 0.0,  
     )
 
     # create and activate VAO (vertex array object)
@@ -137,13 +136,8 @@ def main():
         glClear(GL_COLOR_BUFFER_BIT) # clear with black pixels
 
         glUseProgram(shader_program)
-
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glVertexPointer(3, GL_FLOAT, 0, vertices)
-
         glBindVertexArray(VAO)
-
-        glDrawArrays(GL_QUADS, 0, 4) # render triangles using the data stored in VAO
+        glDrawArrays(GL_TRIANGLES, 0, 6) # render triangles using the data stored in VAO
 
         # swap front and back buffers
         glfwSwapBuffers(window)
