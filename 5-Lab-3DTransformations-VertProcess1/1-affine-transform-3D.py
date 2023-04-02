@@ -12,21 +12,16 @@ layout (location = 1) in vec3 vin_color;
 
 out vec4 vout_color;
 
-uniform mat3 M;
+uniform mat4 M;
 
 void main()
 {
-    // 3D point in homogeneous coordinates
-    gl_Position = vec4(0, 0, 0, 1.0);
+    // 3D points in homogeneous coordinates
+    vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1.0);
 
-    // 2D points in homogeneous coordinates
-    vec3 p2D_in_hcoord = vec3(vin_pos.x, vin_pos.y, 1.0);
-    vec3 p2D_new_in_hcoord = M * p2D_in_hcoord;
+    gl_Position = M * p3D_in_hcoord;
 
-    // setting x, y coordinate values of gl_Position
-    gl_Position.xy = p2D_new_in_hcoord.xy;
-
-    vout_color = vec4(vin_color, 1);
+    vout_color = vec4(vin_color, 1.);
 }
 '''
 
@@ -165,14 +160,14 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '5-drawing-frames', None, None)
+    window = glfwCreateWindow(800, 800, '1-affine-transform-3D', None, None)
     if not window:
         glfwTerminate()
         return
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback)
+    glfwSetKeyCallback(window, key_callback);
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -180,7 +175,7 @@ def main():
     # get uniform locations
     M_loc = glGetUniformLocation(shader_program, 'M')
     
-    # prepare vaos: 2개 그릴거라 2개 준비함(본래는 하나에 그려도 되긴한데 성능 고려할게 아니라서 이렇게 함)
+    # prepare vaos
     vao_triangle = prepare_vao_triangle()
     vao_frame = prepare_vao_frame()
 
@@ -192,8 +187,8 @@ def main():
         glUseProgram(shader_program)
 
         # current frame: I (world frame)
-        I = np.identity(3)
-        glUniformMatrix3fv(M_loc, 1, GL_TRUE, I)
+        I = np.identity(4)
+        glUniformMatrix4fv(M_loc, 1, GL_TRUE, I)
 
         # draw current frame
         glBindVertexArray(vao_frame)
@@ -203,31 +198,40 @@ def main():
         # animating
         t = glfwGetTime()
 
-        # rotation 30 deg
-        th = np.radians(t*80)
-        R = np.array([[np.cos(th), -np.sin(th), 0.],
-                      [np.sin(th),  np.cos(th), 0.],
-                      [0.,         0.,          1.]])
+        # rotation
+        th = np.radians(t*90)
+        R = np.array([[np.cos(th), -np.sin(th), 0., 0.],
+                      [np.sin(th),  np.cos(th), 0., 0.],
+                      [0.,         0.,          0., 1.],
+                      [0.,         0.,          0., 1.]])
 
-        # translation by (.5, .2)
-        T = np.array([[1., 0., .5 * np.sin(t)],
-                      [0., 1., .2],
-                      [0., 0., 1.]])
-        
-        S = np.array([[1, 0, 0],
-                      [0, np.sin(t) + 1, 0],
-                      [0, 0, 2]])
+        # tranlation
+        T = np.array([[1., 0., 0., np.sin(t)],
+                      [0., 1., 0., .2],
+                      [0., 0., 1., 0.],
+                      [0., 0., 0., 1.]])
+
+        # scaling
+        S = np.array([[np.sin(t), 0., 0., 0.],
+                      [0., np.sin(t), 0., 0.],
+                      [0., 0., np.sin(t), 0.],
+                      [0., 0., 0., 1.]])
+
+        # shearing
+        H = np.array([[1., np.sin(t), 0., 0.],
+                      [0., 1., 0., 0.],
+                      [0., 0., 0., 0.],
+                      [0., 0., 0., 1.]])
 
         M = R
         # M = T
-        # M = R @ T   # '@' is matrix-matrix / matrix-vector multiplication operator
-        # M = R @ T @ S
+        # M = S
+        # M = H
+        # M = R @ T
+        # M = T @ R
 
-        # print(M)
-
-            
         # current frame: M
-        glUniformMatrix3fv(M_loc, 1, GL_TRUE, M)
+        glUniformMatrix4fv(M_loc, 1, GL_TRUE, M)
 
         # draw triangle w.r.t. the current frame
         glBindVertexArray(vao_triangle)

@@ -4,6 +4,9 @@ import glm
 import ctypes
 import numpy as np
 
+g_cam_ang = 0.
+g_cam_height = .1
+
 g_vertex_shader_src = '''
 #version 330 core
 
@@ -12,21 +15,16 @@ layout (location = 1) in vec3 vin_color;
 
 out vec4 vout_color;
 
-uniform mat3 M;
+uniform mat4 MVP;
 
 void main()
 {
-    // 3D point in homogeneous coordinates
-    gl_Position = vec4(0, 0, 0, 1.0);
+    // 3D points in homogeneous coordinates
+    vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1.0);
 
-    // 2D points in homogeneous coordinates
-    vec3 p2D_in_hcoord = vec3(vin_pos.x, vin_pos.y, 1.0);
-    vec3 p2D_new_in_hcoord = M * p2D_in_hcoord;
+    gl_Position = MVP * p3D_in_hcoord;
 
-    // setting x, y coordinate values of gl_Position
-    gl_Position.xy = p2D_new_in_hcoord.xy;
-
-    vout_color = vec4(vin_color, 1);
+    vout_color = vec4(vin_color, 1.);
 }
 '''
 
@@ -88,8 +86,19 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
 
 def key_callback(window, key, scancode, action, mods):
+    global g_cam_ang, g_cam_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    else:
+        if action==GLFW_PRESS or action==GLFW_REPEAT:
+            if key==GLFW_KEY_1:
+                g_cam_ang += np.radians(-10)
+            elif key==GLFW_KEY_3:
+                g_cam_ang += np.radians(10)
+            elif key==GLFW_KEY_2:
+                g_cam_height += .1
+            elif key==GLFW_KEY_W:
+                g_cam_height += -.1
 
 def prepare_vao_triangle():
     # prepare vertex data (in main memory)
@@ -165,35 +174,47 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '5-drawing-frames', None, None)
+    window = glfwCreateWindow(800, 800, '3-lookat', None, None)
     if not window:
         glfwTerminate()
         return
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback)
+    glfwSetKeyCallback(window, key_callback);
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
     # get uniform locations
-    M_loc = glGetUniformLocation(shader_program, 'M')
+    MVP_loc = glGetUniformLocation(shader_program, 'MVP')
     
-    # prepare vaos: 2개 그릴거라 2개 준비함(본래는 하나에 그려도 되긴한데 성능 고려할게 아니라서 이렇게 함)
+    # prepare vaos
     vao_triangle = prepare_vao_triangle()
     vao_frame = prepare_vao_frame()
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # render
-        glClear(GL_COLOR_BUFFER_BIT)
+
+        # enable depth test (we'll see details later)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glEnable(GL_DEPTH_TEST)
 
         glUseProgram(shader_program)
 
-        # current frame: I (world frame)
-        I = np.identity(3)
-        glUniformMatrix3fv(M_loc, 1, GL_TRUE, I)
+        # projection matrix
+        # use orthogonal projection (we'll see details later)
+        P = glm.ortho(-1,1,-1,1,-1,1)
+
+        # view matrix
+        # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
+        V = glm.lookAt(glm.vec3(.1*np.sin(g_cam_ang),g_cam_height,.1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
+
+        # current frame: P*V*I (now this is the world frame)
+        I = glm.mat4()
+        MVP = P*V*I
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
 
         # draw current frame
         glBindVertexArray(vao_frame)
@@ -203,31 +224,25 @@ def main():
         # animating
         t = glfwGetTime()
 
-        # rotation 30 deg
-        th = np.radians(t*80)
-        R = np.array([[np.cos(th), -np.sin(th), 0.],
-                      [np.sin(th),  np.cos(th), 0.],
-                      [0.,         0.,          1.]])
+        # rotation
+        th = np.radians(t*90)
+        R = glm.rotate(th, glm.vec3(0,0,1))
 
-        # translation by (.5, .2)
-        T = np.array([[1., 0., .5 * np.sin(t)],
-                      [0., 1., .2],
-                      [0., 0., 1.]])
-        
-        S = np.array([[1, 0, 0],
-                      [0, np.sin(t) + 1, 0],
-                      [0, 0, 2]])
+        # tranlation
+        T = glm.translate(glm.vec3(np.sin(t), .2, 0.))
+
+        # scaling
+        S = glm.scale(glm.vec3(np.sin(t), np.sin(t), np.sin(t)))
 
         M = R
         # M = T
-        # M = R @ T   # '@' is matrix-matrix / matrix-vector multiplication operator
-        # M = R @ T @ S
+        # M = S
+        # M = R @ T
+        # M = T @ R
 
-        # print(M)
-
-            
-        # current frame: M
-        glUniformMatrix3fv(M_loc, 1, GL_TRUE, M)
+        # current frame: P*V*M
+        MVP = P*V*M
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
 
         # draw triangle w.r.t. the current frame
         glBindVertexArray(vao_triangle)
