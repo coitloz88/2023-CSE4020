@@ -223,12 +223,12 @@ def main():
                       [0., 0., 0., 0.],
                       [0., 0., 0., 1.]])
 
-        M = R
+        # M = R
         # M = T
         # M = S
         # M = H
         # M = R @ T
-        # M = T @ R
+        M = T @ R
 
         # current frame: M
         glUniformMatrix4fv(M_loc, 1, GL_TRUE, M)
