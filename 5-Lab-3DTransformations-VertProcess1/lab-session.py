@@ -7,6 +7,10 @@ import numpy as np
 g_cam_ang = 0.
 g_cam_height = .1
 
+g_translate_x = 0.
+g_translate_y = 0.
+g_translate_z = 0.
+
 g_vertex_shader_src = '''
 #version 330 core
 
@@ -86,7 +90,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_height
+    global g_cam_ang, g_cam_height, M, g_translate_x, g_translate_y, g_translate_z
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
@@ -99,6 +103,18 @@ def key_callback(window, key, scancode, action, mods):
                 g_cam_height += .1
             elif key==GLFW_KEY_W:
                 g_cam_height += -.1
+            elif key==GLFW_KEY_Q:
+                g_translate_x += 0.1
+            elif key==GLFW_KEY_A:
+                g_translate_x -= 0.1
+            elif key==GLFW_KEY_E:
+                g_translate_y += 0.1
+            elif key==GLFW_KEY_D:
+                g_translate_y -= 0.1
+            elif key==GLFW_KEY_Z:
+                g_translate_z += 0.1           
+            elif key==GLFW_KEY_X:
+                g_translate_z -= 0.1 
 
 def prepare_vao_triangle():
     # prepare vertex data (in main memory)
@@ -165,6 +181,7 @@ def prepare_vao_frame():
 
 
 def main():
+    global g_translate_x, g_translate_y, g_translate_z
     # initialize glfw
     if not glfwInit():
         return
@@ -228,19 +245,17 @@ def main():
         th = np.radians(t*90)
         R = glm.rotate(th, glm.vec3(0,0,1))
 
-        # tranlation
-        T = glm.translate(glm.vec3(np.sin(t), .2, 0.))
+        # # tranlation
+        # T = glm.translate(glm.vec3(np.sin(t), .2, 0.))
 
-        # scaling
-        S = glm.scale(glm.vec3(np.sin(t), np.sin(t), np.sin(t)))
-
-        M = R
-        # M = T
-        # M = S
-        # M = R @ T
-        # M = T @ R
+        # # scaling
+        # S = glm.scale(glm.vec3(np.sin(t), np.sin(t), np.sin(t)))
 
         # current frame: P*V*M
+        T = glm.translate(glm.vec3(g_translate_x, g_translate_y, g_translate_z))
+
+        M = T @ R
+
         MVP = P*V*M
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
 
