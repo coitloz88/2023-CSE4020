@@ -7,6 +7,9 @@ import numpy as np
 g_cam_ang = 0.
 g_cam_height = .1
 
+# define mouse properties
+mouse_pressed = {'left': False, 'right': False}
+
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
 g_P = glm.mat4()
 
@@ -114,6 +117,20 @@ def framebuffer_size_callback(window, width, height):
     far = 100.0
     aspect_ratio = width/height
     g_P = glm.perspective(glm.radians(fov), aspect_ratio, near, far)
+
+def mouse_button_callback(window, button, action, mods):
+
+    # This function tells you if you are currently holding down the mouse button and, if so, what you are holding down.
+
+    global mouse_pressed
+
+    if action == GLFW_PRESS:
+        if button == GLFW_MOUSE_BUTTON_LEFT:
+            mouse_pressed['left'] = True
+        elif button == GLFW_MOUSE_BUTTON_RIGHT:
+            mouse_pressed['right'] = True
+    elif action == GLFW_RELEASE:
+            mouse_pressed = False
 
 def prepare_vao_cube():
     
@@ -264,6 +281,7 @@ def main():
     # register event callbacks
     glfwSetKeyCallback(window, key_callback)
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback)
+    glfwSetMouseButtonCallback(window, mouse_button_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
