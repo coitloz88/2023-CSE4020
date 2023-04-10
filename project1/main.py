@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 
 g_cam_ang = 0.
+g_cam_y_ang = 0.
 g_cam_height = .1
 
 # define mouse properties
@@ -94,33 +95,43 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
     return shader_program    # return the shader program
 
+def y_axis_rotation_fixer(y):
+    if y > 89.0:
+        y = 89.0
+    elif y < -89.0:
+        y = -89.0
+    return y
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_height
+    global g_cam_ang, g_cam_y_ang, g_cam_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
         if action==GLFW_PRESS or action==GLFW_REPEAT:
             if key==GLFW_KEY_1:
-                g_cam_ang += np.radians(-10)
-            elif key==GLFW_KEY_3:
-                g_cam_ang += np.radians(10)
+                g_cam_ang += -10
             elif key==GLFW_KEY_2:
+                g_cam_ang += 10
+            elif key==GLFW_KEY_3:
+                g_cam_y_ang += -10            
+            elif key==GLFW_KEY_4:
+                g_cam_y_ang += 10
+            elif key==GLFW_KEY_Q:
                 g_cam_height += .1
             elif key==GLFW_KEY_W:
                 g_cam_height += -.1
+
+            g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def framebuffer_size_callback(window, width, height):
     global g_P
 
     glViewport(0, 0, width, height)
 
-    # perspective method
-    fov = 45.0
-    near = 1.0
-    far = 10.0
-    aspect_ratio = width/height
-    g_P = glm.perspective(glm.radians(fov), aspect_ratio, near, far)
+    ortho_height = 10.
+    ortho_width = ortho_height * width/height
+    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+
 
 def mouse_button_callback(window, button, action, mods):
 
@@ -140,9 +151,9 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global g_cam_ang, g_cam_height, last_mouse_x_pos, last_mouse_y_pos, g_panning_x_offset, g_panning_y_offset
+    global g_cam_ang, g_cam_y_ang, g_cam_height, last_mouse_x_pos, last_mouse_y_pos, g_panning_x_offset, g_panning_y_offset
 
-    sensitivity = 0.004
+    sensitivity = 0.02
 
     x_offset = (x_pos - last_mouse_x_pos) * sensitivity
     y_offset = (y_pos - last_mouse_y_pos) * sensitivity
@@ -153,11 +164,14 @@ def cursor_position_callback(window, x_pos, y_pos):
     if mouse_pressed.get('left'):
         # rotate orbit
         g_cam_ang += x_offset
-        g_cam_height += y_offset
+        g_cam_y_ang += y_offset
 
     elif mouse_pressed.get('right'):
+        # panning
         g_panning_x_offset += x_offset
-        g_panning_y_offset -= y_offset
+        g_panning_y_offset += y_offset
+    
+    g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def prepare_vao_cube():
     
@@ -165,17 +179,17 @@ def prepare_vao_cube():
     # 36 vertices for 12 triangles
     vertices = glm.array(glm.float32,
         # position            color
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-         0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-         0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
+        -0.5 ,  0.5 ,  0.5 ,  0.8, 0.8, 1, # v0
+         0.5 , -0.5 ,  0.5 ,  1, 0.8, 0.8, # v2
+         0.5 ,  0.5 ,  0.5 ,  0.8, 1, 0.8, # v1
                     
         -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
         -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
          0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
                     
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-         0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
+        -0.5 ,  0.5 , -0.5 ,  0.5, 1, 0.5, # v4
+         0.5 ,  0.5 , -0.5 ,  0.5, 0.5, 1, # v5
+         0.5 , -0.5 , -0.5 ,  1, 0.5, 0.5, # v6
                     
         -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
          0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
@@ -280,9 +294,9 @@ def draw_cube(vao, MVP, MVP_loc):
 
 def draw_cube_array(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
-    for i in range(4):
-        for j in range(4):
-            for k in range(4):
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
                 MVP_cube = MVP * glm.translate(glm.vec3(1*i, 1*j, 1*k)) * glm.scale(glm.vec3(.5,.5,.5))
                 glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP_cube))
                 glDrawArrays(GL_TRIANGLES, 0, 36)
@@ -293,7 +307,7 @@ def draw_grid(vao, MVP, MVP_loc):
     # TODO
 
 def main():
-    global g_P, g_cam_ang, g_cam_height, g_panning_x_offset, g_panning_y_offset
+    global g_P, g_cam_ang, g_cam_y_ang, g_cam_height, g_panning_x_offset, g_panning_y_offset
 
     # initialize glfw
     if not glfwInit():
@@ -330,7 +344,9 @@ def main():
     # glViewport(100,100, 200,200)
 
     # initialize projection matrix
-    g_P = glm.perspective(glm.radians(45), 1, 1, 10)
+    ortho_height = 10.
+    ortho_width = ortho_height * 800/800    # initial width/height
+    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -343,17 +359,22 @@ def main():
 
         glUseProgram(shader_program)
 
+        cam_ang = np.radians(g_cam_ang)
+        cam_y_ang = np.radians(g_cam_y_ang)
+
+        camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
+        
         target_point = glm.vec3(g_panning_x_offset, g_panning_y_offset, 0)
+        T = glm.translate(target_point)
 
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
-        V = glm.lookAt(glm.vec3(5*np.sin(g_cam_ang), g_cam_height, 5*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
+        V = glm.lookAt(camera_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
 
-        # panning camera position with g_panning_x_offset, g_panning_y_offset
-        T = glm.translate(target_point)
+        # # panning camera position with g_panning_x_offset, g_panning_y_offset
 
         # draw world frame
-        draw_frame(vao_frame, g_P*V*T*glm.mat4(), MVP_loc)
+        draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
 
         # animating
         # t = glfwGetTime()
@@ -368,10 +389,10 @@ def main():
         # M = R
 
         # # draw cube w.r.t. the current frame MVP
-        # draw_cube(vao_cube, g_P*V*T*M, MVP_loc)
+        # draw_cube(vao_cube, g_P*V*M, MVP_loc)
 
         # draw cube array w.r.t. the current frame MVP
-        draw_cube_array(vao_cube, g_P*V*T*M, MVP_loc)
+        draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
 
 
         # swap front and back buffers
