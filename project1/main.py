@@ -103,7 +103,7 @@ def y_axis_rotation_fixer(y):
     return y
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_y_ang, g_cam_height
+    global g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
@@ -117,9 +117,13 @@ def key_callback(window, key, scancode, action, mods):
             elif key==GLFW_KEY_4:
                 g_cam_y_ang += 10
             elif key==GLFW_KEY_Q:
-                g_cam_height += .1
+                g_panning_x_offset += .5
             elif key==GLFW_KEY_W:
-                g_cam_height += -.1
+                g_panning_x_offset -= .5            
+            elif key==GLFW_KEY_E:
+                g_panning_y_offset += .5
+            elif key==GLFW_KEY_R:
+                g_panning_y_offset -= .5
 
             g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
@@ -363,14 +367,18 @@ def main():
         cam_y_ang = np.radians(g_cam_y_ang)
 
         camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
-        
+
         target_point = glm.vec3(g_panning_x_offset, g_panning_y_offset, 0)
+        
+        translated_camera_pos = camera_pos + target_point
+        
         T = glm.translate(target_point)
 
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
+        # V = glm.lookAt(translated_camera_pos, translated_camera_pos + glm.normalize(translated_camera_pos), glm.vec3(0,1,0))
         V = glm.lookAt(camera_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
-
+        V = V * T
         # # panning camera position with g_panning_x_offset, g_panning_y_offset
 
         # draw world frame
