@@ -158,7 +158,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global g_cam_ang, g_cam_y_ang, g_cam_height, last_mouse_x_pos, last_mouse_y_pos, g_panning_x_offset, g_panning_y_offset
+    global g_cam_ang, g_cam_y_ang, last_mouse_x_pos, last_mouse_y_pos, g_panning_x_offset, g_panning_y_offset
 
     sensitivity = 0.02
 
@@ -170,7 +170,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     if mouse_pressed.get('left'):
         # rotate orbit
-        g_cam_ang += x_offset
+        g_cam_ang += -x_offset
         g_cam_y_ang += y_offset
 
     elif mouse_pressed.get('right'):
