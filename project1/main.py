@@ -271,11 +271,39 @@ def prepare_vao_frame():
     vertices = glm.array(glm.float32,
         # position        # color
          0.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis start
-         1.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
+         10, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
          0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # y-axis start
-         0.0, 1.0, 0.0,  0.0, 1.0, 0.0, # y-axis end 
+         0.0, 10, 0.0,  0.0, 1.0, 0.0, # y-axis end 
          0.0, 0.0, 0.0,  0.0, 0.0, 1.0, # z-axis start
-         0.0, 0.0, 1.0,  0.0, 0.0, 1.0, # z-axis end 
+         0.0, 0.0, 10,  0.0, 0.0, 1.0, # z-axis end 
+    )
+
+    # create and activate VAO (vertex array object)
+    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
+    glBindVertexArray(VAO)      # activate VAO
+
+    # create and activate VBO (vertex buffer object)
+    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
+
+    # copy vertex data to VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+    # configure vertex positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+    glEnableVertexAttribArray(0)
+
+    # configure vertex colors
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    glEnableVertexAttribArray(1)
+
+    return VAO
+
+def prepare_vao_grid():
+    # prepare vertex data (in main memory)
+    vertices = glm.array(glm.float32,
+    5, 0, -5.0, 1, 1, 1, -5, 0, -5.0, 1, 1, 1, 5, 0, -4.5, 1, 1, 1, -5, 0, -4.5, 1, 1, 1, 5, 0, -4.0, 1, 1, 1, -5, 0, -4.0, 1, 1, 1, 5, 0, -3.5, 1, 1, 1, -5, 0, -3.5, 1, 1, 1, 5, 0, -3.0, 1, 1, 1, -5, 0, -3.0, 1, 1, 1, 5, 0, -2.5, 1, 1, 1, -5, 0, -2.5, 1, 1, 1, 5, 0, -2.0, 1, 1, 1, -5, 0, -2.0, 1, 1, 1, 5, 0, -1.5, 1, 1, 1, -5, 0, -1.5, 1, 1, 1, 5, 0, -1.0, 1, 1, 1, -5, 0, -1.0, 1, 1, 1, 5, 0, -0.5, 1, 1, 1, -5, 0, -0.5, 1, 1, 1, 5, 0, 0.0, 1, 1, 1, -5, 0, 0.0, 1, 1, 1, 5, 0, 0.5, 1, 1, 1, -5, 0, 0.5, 1, 1, 1, 5, 0, 1.0, 1, 1, 1, -5, 0, 1.0, 1, 1, 1, 5, 0, 1.5, 1, 1, 1, -5, 0, 1.5, 1, 1, 1, 5, 0, 2.0, 1, 1, 1, -5, 0, 2.0, 1, 1, 1, 5, 0, 2.5, 1, 1, 1, -5, 0, 2.5, 1, 1, 1, 5, 0, 3.0, 1, 1, 1, -5, 0, 3.0, 1, 1, 1, 5, 0, 3.5, 1, 1, 1, -5, 0, 3.5, 1, 1, 1, 5, 0, 4.0, 1, 1, 1, -5, 0, 4.0, 1, 1, 1, 5, 0, 4.5, 1, 1, 1, -5, 0, 4.5, 1, 1, 1, 5, 0, 5.0, 1, 1, 1, -5, 0, 5.0, 1, 1, 1,
+    -5.0, 0, -5, 1, 1, 1, -5.0, 0, 5, 1, 1, 1, -4.5, 0, -5, 1, 1, 1, -4.5, 0, 5, 1, 1, 1, -4.0, 0, -5, 1, 1, 1, -4.0, 0, 5, 1, 1, 1, -3.5, 0, -5, 1, 1, 1, -3.5, 0, 5, 1, 1, 1, -3.0, 0, -5, 1, 1, 1, -3.0, 0, 5, 1, 1, 1, -2.5, 0, -5, 1, 1, 1, -2.5, 0, 5, 1, 1, 1, -2.0, 0, -5, 1, 1, 1, -2.0, 0, 5, 1, 1, 1, -1.5, 0, -5, 1, 1, 1, -1.5, 0, 5, 1, 1, 1, -1.0, 0, -5, 1, 1, 1, -1.0, 0, 5, 1, 1, 1, -0.5, 0, -5, 1, 1, 1, -0.5, 0, 5, 1, 1, 1, 0.0, 0, -5, 1, 1, 1, 0.0, 0, 5, 1, 1, 1, 0.5, 0, -5, 1, 1, 1, 0.5, 0, 5, 1, 1, 1, 1.0, 0, -5, 1, 1, 1, 1.0, 0, 5, 1, 1, 1, 1.5, 0, -5, 1, 1, 1, 1.5, 0, 5, 1, 1, 1, 2.0, 0, -5, 1, 1, 1, 2.0, 0, 5, 1, 1, 1, 2.5, 0, -5, 1, 1, 1, 2.5, 0, 5, 1, 1, 1, 3.0, 0, -5, 1, 1, 1, 3.0, 0, 5, 1, 1, 1, 3.5, 0, -5, 1, 1, 1, 3.5, 0, 5, 1, 1, 1, 4.0, 0, -5, 1, 1, 1, 4.0, 0, 5, 1, 1, 1, 4.5, 0, -5, 1, 1, 1, 4.5, 0, 5, 1, 1, 1, 5.0, 0, -5, 1, 1, 1, 5.0, 0, 5, 1, 1, 1
     )
 
     # create and activate VAO (vertex array object)
@@ -321,7 +349,7 @@ def draw_cube_array(vao, MVP, MVP_loc):
 def draw_grid(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    # TODO
+    glDrawArrays(GL_LINES, 0, 84)
 
 def main():
     global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset, g_fov
@@ -356,7 +384,7 @@ def main():
     # prepare vaos
     vao_cube = prepare_vao_cube()
     vao_frame = prepare_vao_frame()
-
+    vao_grid = prepare_vao_grid()
     # # viewport
     # glViewport(100,100, 200,200)
 
@@ -414,8 +442,8 @@ def main():
         # draw_cube(vao_cube, g_P*V*M, MVP_loc)
 
         # draw cube array w.r.t. the current frame MVP
-        draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
-
+        # draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
+        draw_grid(vao_grid, g_P*V*M, MVP_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
