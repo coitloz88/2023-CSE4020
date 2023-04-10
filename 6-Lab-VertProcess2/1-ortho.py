@@ -88,7 +88,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 def key_callback(window, key, scancode, action, mods):
     global g_cam_ang, g_cam_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
         if action==GLFW_PRESS or action==GLFW_REPEAT:
             if key==GLFW_KEY_1:
@@ -244,7 +244,7 @@ def main():
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -287,16 +287,16 @@ def main():
         th = np.radians(t*90)
         R = glm.rotate(th, glm.vec3(1,0,0))
 
-        M = glm.mat4()
+        # M = glm.mat4()
 
         # # try applying rotation
-        # M = R
+        M = R
 
         # draw cube w.r.t. the current frame MVP
-        draw_cube(vao_cube, P*V*M, MVP_loc)
+        # draw_cube(vao_cube, P*V*M, MVP_loc)
 
         # # draw cube array w.r.t. the current frame MVP
-        # draw_cube_array(vao_cube, P*V*M, MVP_loc)
+        draw_cube_array(vao_cube, P*V*M, MVP_loc)
 
 
         # swap front and back buffers

@@ -91,7 +91,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 def key_callback(window, key, scancode, action, mods):
     global g_cam_ang, g_cam_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
         if action==GLFW_PRESS or action==GLFW_REPEAT:
             if key==GLFW_KEY_1:
