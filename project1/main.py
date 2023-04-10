@@ -8,6 +8,7 @@ g_cam_ang = 0.
 g_cam_height = .1
 
 # define mouse properties
+last_mouse_x_pos, last_mouse_y_pos = 800 // 2, 800 // 2
 mouse_pressed = {'left': False, 'right': False}
 
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
@@ -130,7 +131,24 @@ def mouse_button_callback(window, button, action, mods):
         elif button == GLFW_MOUSE_BUTTON_RIGHT:
             mouse_pressed['right'] = True
     elif action == GLFW_RELEASE:
-            mouse_pressed = False
+            mouse_pressed = {'left': False, 'right': False}
+
+def cursor_position_callback(window, x_pos, y_pos):
+
+    # manage cursor position callback event
+
+    global g_cam_ang, g_cam_height, last_mouse_x_pos, last_mouse_y_pos
+
+    x_offset = x_pos - last_mouse_x_pos
+    y_offset = y_pos - last_mouse_y_pos
+
+    last_mouse_x_pos = x_pos
+    last_mouse_y_pos = y_pos
+
+    if mouse_pressed.get('left'):
+        # rotate orbit
+        g_cam_ang += x_offset * 0.003
+        g_cam_height += y_offset * 0.003
 
 def prepare_vao_cube():
     
@@ -282,6 +300,7 @@ def main():
     glfwSetKeyCallback(window, key_callback)
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback)
     glfwSetMouseButtonCallback(window, mouse_button_callback)
+    glfwSetCursorPosCallback(window, cursor_position_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -312,13 +331,12 @@ def main():
 
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
-        V = glm.lookAt(glm.vec3(1*np.sin(g_cam_ang),g_cam_height,1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
+        V = glm.lookAt(glm.vec3(1*np.sin(g_cam_ang), g_cam_height, 1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
 
         # draw world frame
         draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
 
-
-        # # animating
+        # animating
         # t = glfwGetTime()
 
         # # rotation
@@ -331,10 +349,10 @@ def main():
         # M = R
 
         # # draw cube w.r.t. the current frame MVP
-        # draw_cube(vao_cube, g_P*V*M, MVP_loc)
+        draw_cube(vao_cube, g_P*V*M, MVP_loc)
 
         # draw cube array w.r.t. the current frame MVP
-        draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
+        # draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
 
 
         # swap front and back buffers
