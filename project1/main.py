@@ -6,7 +6,7 @@ import numpy as np
 
 g_cam_ang = 0.
 g_cam_y_ang = 0.
-g_cam_height = .1
+g_fov = 45.0
 
 # define mouse properties
 last_mouse_x_pos, last_mouse_y_pos = 800 // 2, 800 // 2
@@ -128,14 +128,17 @@ def key_callback(window, key, scancode, action, mods):
             g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def framebuffer_size_callback(window, width, height):
-    global g_P
+    global g_P, g_fov
 
     glViewport(0, 0, width, height)
 
-    ortho_height = 10.
-    ortho_width = ortho_height * width/height
-    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-
+    # ortho_height = 10.
+    # ortho_width = ortho_height * width/height
+    # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+    near = 0.5
+    far = 20.0
+    aspect_ratio = width/height
+    g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
 
 def mouse_button_callback(window, button, action, mods):
 
@@ -176,6 +179,16 @@ def cursor_position_callback(window, x_pos, y_pos):
         g_panning_y_offset += y_offset
     
     g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+
+def scroll_callback(window, x_scroll, y_scroll):
+    global g_fov
+
+    g_fov -= y_scroll
+
+    if g_fov < 1.0:
+        g_fov = 1.0
+    elif g_fov > 60.0:
+        g_fov = 60.0
 
 def prepare_vao_cube():
     
@@ -311,7 +324,7 @@ def draw_grid(vao, MVP, MVP_loc):
     # TODO
 
 def main():
-    global g_P, g_cam_ang, g_cam_y_ang, g_cam_height, g_panning_x_offset, g_panning_y_offset
+    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset, g_fov
 
     # initialize glfw
     if not glfwInit():
@@ -333,7 +346,7 @@ def main():
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback)
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
-
+    glfwSetScrollCallback(window, scroll_callback)
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
@@ -348,9 +361,10 @@ def main():
     # glViewport(100,100, 200,200)
 
     # initialize projection matrix
-    ortho_height = 10.
-    ortho_width = ortho_height * 800/800    # initial width/height
-    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+    # ortho_height = 10.
+    # ortho_width = ortho_height * 800/800    # initial width/height
+    # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+    g_P = glm.perspective(glm.radians(g_fov), 1, 0.5, 20)
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -362,15 +376,15 @@ def main():
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
         glUseProgram(shader_program)
+        
+        g_P = glm.perspective(glm.radians(g_fov), 1, 0.5, 20)
 
         cam_ang = np.radians(g_cam_ang)
         cam_y_ang = np.radians(g_cam_y_ang)
 
         camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
 
-        target_point = glm.vec3(g_panning_x_offset, g_panning_y_offset, 0)
-        
-        translated_camera_pos = camera_pos + target_point
+        target_point = glm.vec3(g_panning_x_offset, -g_panning_y_offset, 0)
         
         T = glm.translate(target_point)
 
