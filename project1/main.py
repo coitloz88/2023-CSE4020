@@ -6,6 +6,7 @@ import numpy as np
 
 g_cam_ang = 0.
 g_cam_y_ang = 0.
+
 g_fov = 45.0
 
 # projection mode
@@ -13,7 +14,7 @@ g_projection_is_ortho = False
 g_screen_width, g_screen_height = 800, 800
 
 # define mouse properties
-last_mouse_x_pos, last_mouse_y_pos = 800 // 2, 800 // 2
+last_mouse_x_pos, last_mouse_y_pos = 400, 400
 mouse_pressed = {'left': False, 'right': False}
 
 # panning offset
@@ -21,6 +22,13 @@ g_panning_x_offset, g_panning_y_offset = 0, 0
 
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
 g_P = glm.mat4()
+
+# camera data
+g_camera_pos = glm.vec3(0., 0., -1.)
+g_camera_front = glm.vec3(0., 0., 1.)
+g_camera_up = glm.vec3(0., 1., 0.)
+
+is_first_mouse = True
 
 g_vertex_shader_src = '''
 #version 330 core
@@ -107,7 +115,7 @@ def y_axis_rotation_fixer(y):
     return y
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
@@ -120,16 +128,19 @@ def key_callback(window, key, scancode, action, mods):
             #     g_cam_y_ang += -10            
             # elif key==GLFW_KEY_4:
             #     g_cam_y_ang += 10
-            # elif key==GLFW_KEY_Q:
-            #     g_panning_x_offset += .5
-            # elif key==GLFW_KEY_W:
-            #     g_panning_x_offset -= .5            
-            # elif key==GLFW_KEY_E:
-            #     g_panning_y_offset += .5
-            # elif key==GLFW_KEY_R:
-            #     g_panning_y_offset -= .5
+            CONST_OFFSET = 0.5
 
-            if key == GLFW_KEY_V:
+            if key==GLFW_KEY_W:
+                # g_camera_pos += g_camera_front * CONST_OFFSET
+                g_camera_pos += g_camera_up * CONST_OFFSET
+            elif key==GLFW_KEY_S:
+                # g_camera_pos -= g_camera_front * CONST_OFFSET
+                g_camera_pos -= g_camera_up * CONST_OFFSET
+            elif key==GLFW_KEY_A:
+                g_camera_pos -= glm.normalize(glm.cross(g_camera_front, g_camera_up)) * CONST_OFFSET
+            elif key==GLFW_KEY_D:
+                g_camera_pos += glm.normalize(glm.cross(g_camera_front, g_camera_up)) * CONST_OFFSET
+            elif key == GLFW_KEY_V:
                 # TODO: ortho와 perspective 전환
                 g_projection_is_ortho = not g_projection_is_ortho
                 
@@ -180,27 +191,43 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global g_cam_ang, g_cam_y_ang, last_mouse_x_pos, last_mouse_y_pos, g_panning_x_offset, g_panning_y_offset
+    global mouse_pressed, g_cam_ang, g_cam_y_ang, last_mouse_x_pos, last_mouse_y_pos, g_camera_pos, g_camera_front, g_camera_up, is_first_mouse
 
     sensitivity = 0.02
 
     x_offset = (x_pos - last_mouse_x_pos) * sensitivity
     y_offset = (y_pos - last_mouse_y_pos) * sensitivity
 
+    if is_first_mouse:
+        x_offset = 0
+        y_offset = 0
+        is_first_mouse = False
+
     last_mouse_x_pos = x_pos
     last_mouse_y_pos = y_pos
 
     if mouse_pressed.get('left'):
         # rotate orbit
-        g_cam_ang += -x_offset
+        g_cam_ang += x_offset
         g_cam_y_ang += y_offset
+        g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+
+        front = glm.vec3(
+            glm.sin(glm.radians(g_cam_ang)) * glm.cos(glm.radians(g_cam_y_ang)),
+            glm.sin(glm.radians(g_cam_y_ang)),
+            glm.cos(glm.radians(g_cam_ang)) * glm.cos(glm.radians(g_cam_y_ang))
+        )
+        g_camera_front = glm.normalize(front)
+        print('camera front: ' + str(g_camera_front))
+        
 
     elif mouse_pressed.get('right'):
         # panning
-        g_panning_x_offset += x_offset
-        g_panning_y_offset += y_offset
-    
-    g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+        # g_camera_pos += x_offset * g_camera_front
+        # g_camera_front += y_offset * glm.normalize(glm.cross(g_camera_front, g_camera_up))
+        moving_speed = 0.5
+        g_camera_pos += g_camera_up * y_offset * moving_speed
+        g_camera_pos -= glm.normalize(glm.cross(g_camera_front, g_camera_up)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
     global g_P, g_fov, g_screen_width, g_screen_height, g_projection_is_ortho
@@ -399,7 +426,7 @@ def draw_grid(vao, MVP, MVP_loc):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset
+    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset, g_camera_pos, g_camera_front, g_camera_up
 
     # initialize glfw
     if not glfwInit():
@@ -440,6 +467,7 @@ def main():
     # ortho_width = ortho_height * 800/800    # initial width/height
     # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
+    print('first camera front: ' + str(g_camera_front))
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -455,17 +483,15 @@ def main():
         cam_ang = np.radians(g_cam_ang)
         cam_y_ang = np.radians(g_cam_y_ang)
 
-        camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
-
-        target_point = glm.vec3(g_panning_x_offset, -g_panning_y_offset, 0)
-        
-        T = glm.translate(target_point)
+        # camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
 
         # view matrix
         # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
-        # V = glm.lookAt(translated_camera_pos, translated_camera_pos + glm.normalize(translated_camera_pos), glm.vec3(0,1,0))
-        V = glm.lookAt(camera_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
-        V = V * T
+        # V = glm.lookAt(camera_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
+
+        V = glm.lookAt(g_camera_pos,g_camera_pos + g_camera_front, g_camera_up)
+
+        # V = V * T
         # # panning camera position with g_panning_x_offset, g_panning_y_offset
 
         # draw world frame
