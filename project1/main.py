@@ -15,9 +15,6 @@ g_screen_width, g_screen_height = 800, 800
 last_mouse_x_pos, last_mouse_y_pos = 400, 400
 mouse_pressed = {'left': False, 'right': False}
 
-# panning offset
-g_panning_x_offset, g_panning_y_offset = 0, 0
-
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
 g_P = glm.mat4()
 
@@ -25,8 +22,6 @@ g_P = glm.mat4()
 g_camera_pos = glm.vec3(0., 0., -1.)
 g_camera_front = glm.vec3(0., 0., 1.)
 g_camera_up = glm.vec3(0., 1., 0.)
-
-is_first_mouse = True
 
 g_vertex_shader_src = '''
 #version 330 core
@@ -105,19 +100,12 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
     return shader_program    # return the shader program
 
-def y_axis_rotation_fixer(y):
-    if y > 89.0:
-        y = 89.0
-    elif y < -89.0:
-        y = -89.0
-    return y
-
 def key_callback(window, key, scancode, action, mods):
     global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
-        if action==GLFW_PRESS and key == GLFW_KEY_V:
+        if key == GLFW_KEY_V and action == GLFW_PRESS:
             g_projection_is_ortho = not g_projection_is_ortho
             
             if g_projection_is_ortho:
@@ -172,11 +160,6 @@ def cursor_position_callback(window, x_pos, y_pos):
     x_offset = (x_pos - last_mouse_x_pos) * sensitivity
     y_offset = (y_pos - last_mouse_y_pos) * sensitivity
 
-    if is_first_mouse:
-        x_offset = 0
-        y_offset = 0
-        is_first_mouse = False
-
     last_mouse_x_pos = x_pos
     last_mouse_y_pos = y_pos
 
@@ -184,8 +167,7 @@ def cursor_position_callback(window, x_pos, y_pos):
         # rotate orbit
         g_azimuth += x_offset
         g_elevation += y_offset
-        g_elevation = y_axis_rotation_fixer(g_elevation)
-
+        
         front = glm.vec3(
             np.sin(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation)),
             np.sin(np.radians(g_elevation)),
@@ -202,18 +184,13 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     elif mouse_pressed.get('right'):
         # panning
-        moving_speed = 0.1
+        moving_speed = 0.05
         g_camera_pos += g_camera_up * y_offset * moving_speed + glm.normalize(glm.cross(g_camera_up, g_camera_front)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
     global g_screen_width, g_screen_height, g_camera_pos, g_camera_front
-
-    # if g_projection_is_ortho:
-    #     return
     
-    # g_P = glm.perspective(glm.radians(45.0), g_screen_width / g_screen_height, 0.5, 20)
     move_speed = 0.05
-
     g_camera_pos += g_camera_front * move_speed * y_scroll
 
 def prepare_vao_frame():
@@ -288,7 +265,7 @@ def draw_grid(vao, MVP, MVP_loc):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_azimuth, g_elevation, g_panning_x_offset, g_panning_y_offset, g_camera_pos, g_camera_front, g_camera_up
+    global g_P, g_azimuth, g_elevation, g_camera_pos, g_camera_front, g_camera_up
 
     # initialize glfw
     if not glfwInit():
