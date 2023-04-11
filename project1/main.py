@@ -117,42 +117,18 @@ def key_callback(window, key, scancode, action, mods):
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
-        if action==GLFW_PRESS or action==GLFW_REPEAT:
-            # if key==GLFW_KEY_1:
-            #     g_cam_ang += -10
-            # elif key==GLFW_KEY_2:
-            #     g_cam_ang += 10
-            # elif key==GLFW_KEY_3:
-            #     g_cam_y_ang += -10            
-            # elif key==GLFW_KEY_4:
-            #     g_cam_y_ang += 10
-            CONST_OFFSET = 0.5
-
-            if key==GLFW_KEY_W:
-                # g_camera_pos += g_camera_front * CONST_OFFSET
-                g_camera_pos += g_camera_up * CONST_OFFSET
-            elif key==GLFW_KEY_S:
-                # g_camera_pos -= g_camera_front * CONST_OFFSET
-                g_camera_pos -= g_camera_up * CONST_OFFSET
-            elif key==GLFW_KEY_A:
-                g_camera_pos -= glm.normalize(glm.cross(g_camera_front, g_camera_up)) * CONST_OFFSET
-            elif key==GLFW_KEY_D:
-                g_camera_pos += glm.normalize(glm.cross(g_camera_front, g_camera_up)) * CONST_OFFSET
-            elif key == GLFW_KEY_V:
-                # TODO: ortho와 perspective 전환
-                g_projection_is_ortho = not g_projection_is_ortho
-                
-                if g_projection_is_ortho:
-                    ortho_height = 1.
-                    ortho_width = ortho_height * g_screen_width/g_screen_height
-                    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-                else: 
-                    near = 0.5
-                    far = 20.0
-                    aspect_ratio = g_screen_width/g_screen_height
-                    g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
-
-            # g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+        if action==GLFW_PRESS and key == GLFW_KEY_V:
+            g_projection_is_ortho = not g_projection_is_ortho
+            
+            if g_projection_is_ortho:
+                ortho_height = 1.
+                ortho_width = ortho_height * g_screen_width/g_screen_height
+                g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+            else: 
+                near = 0.5
+                far = 20.0
+                aspect_ratio = g_screen_width/g_screen_height
+                g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
@@ -217,14 +193,16 @@ def cursor_position_callback(window, x_pos, y_pos):
         )
         g_camera_front = glm.normalize(front)
 
+        up = glm.vec3(
+            - np.sin(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation)),
+            np.cos(np.radians(g_elevation)),
+            -np.cos(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation))        
+        )
+        g_camera_up = glm.normalize(up)
+
     elif mouse_pressed.get('right'):
         # panning
         moving_speed = 0.1
-        up = glm.normalize(glm.vec3(
-            - np.cos(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation)),
-            np.sin(np.radians(g_elevation)),
-            - np.sin(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation))        
-        ))
         g_camera_pos += g_camera_up * y_offset * moving_speed + glm.normalize(glm.cross(g_camera_up, g_camera_front)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
