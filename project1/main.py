@@ -4,8 +4,8 @@ import glm
 import ctypes
 import numpy as np
 
-g_cam_ang = 0.
-g_cam_y_ang = 0.
+g_azimuth = 0.
+g_elevation = 0.
 
 # projection mode
 g_projection_is_ortho = False
@@ -189,7 +189,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global mouse_pressed, g_cam_ang, g_cam_y_ang, last_mouse_x_pos, last_mouse_y_pos, g_camera_pos, g_camera_front, g_camera_up, is_first_mouse
+    global mouse_pressed, g_azimuth, g_elevation, last_mouse_x_pos, last_mouse_y_pos, g_camera_pos, g_camera_front, g_camera_up, is_first_mouse
 
     sensitivity = 0.02
 
@@ -206,24 +206,26 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     if mouse_pressed.get('left'):
         # rotate orbit
-        g_cam_ang += x_offset
-        g_cam_y_ang += y_offset
-        g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+        g_azimuth += x_offset
+        g_elevation += y_offset
+        g_elevation = y_axis_rotation_fixer(g_elevation)
 
         front = glm.vec3(
-            glm.sin(glm.radians(g_cam_ang)) * glm.cos(glm.radians(g_cam_y_ang)),
-            glm.sin(glm.radians(g_cam_y_ang)),
-            glm.cos(glm.radians(g_cam_ang)) * glm.cos(glm.radians(g_cam_y_ang))
+            np.sin(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation)),
+            np.sin(np.radians(g_elevation)),
+            np.cos(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation))
         )
         g_camera_front = glm.normalize(front)
-        
+
     elif mouse_pressed.get('right'):
         # panning
-        # g_camera_pos += x_offset * g_camera_front
-        # g_camera_front += y_offset * glm.normalize(glm.cross(g_camera_front, g_camera_up))
         moving_speed = 0.1
-        g_camera_pos += g_camera_up * y_offset * moving_speed
-        g_camera_pos -= glm.normalize(glm.cross(g_camera_front, g_camera_up)) * x_offset * moving_speed
+        up = glm.normalize(glm.vec3(
+            - np.cos(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation)),
+            np.sin(np.radians(g_elevation)),
+            - np.sin(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation))        
+        ))
+        g_camera_pos += g_camera_up * y_offset * moving_speed + glm.normalize(glm.cross(g_camera_up, g_camera_front)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
     global g_screen_width, g_screen_height, g_camera_pos, g_camera_front
@@ -235,82 +237,6 @@ def scroll_callback(window, x_scroll, y_scroll):
     move_speed = 0.05
 
     g_camera_pos += g_camera_front * move_speed * y_scroll
-
-def prepare_vao_cube():
-    
-    # prepare vertex data (in main memory)
-    # 36 vertices for 12 triangles
-    vertices = glm.array(glm.float32,
-        # position            color
-        -0.5 ,  0.5 ,  0.5 ,  0.8, 0.8, 1, # v0
-         0.5 , -0.5 ,  0.5 ,  1, 0.8, 0.8, # v2
-         0.5 ,  0.5 ,  0.5 ,  0.8, 1, 0.8, # v1
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-         0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-                    
-        -0.5 ,  0.5 , -0.5 ,  0.5, 1, 0.5, # v4
-         0.5 ,  0.5 , -0.5 ,  0.5, 0.5, 1, # v5
-         0.5 , -0.5 , -0.5 ,  1, 0.5, 0.5, # v6
-                    
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-         0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-         0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-         0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
- 
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-         0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-                    
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-                    
-         0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-         0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-                    
-         0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-         0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-         0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-    )
-
-    # create and activate VAO (vertex array object)
-    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    # configure vertex colors
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
-
-    return VAO
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -348,45 +274,6 @@ def prepare_vao_frame():
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
 
-    '''
-    vertices = []
-    for i in range(-10, 11):
-        vertices.append(float(format(i * 0.1, ".1f")))
-        vertices.append(0)
-        vertices.append(-1)
-        
-        # color input
-        for k in range(0, 3):
-            vertices.append(1)
-        
-        vertices.append(float(format(i * 0.1, ".1f")))
-        vertices.append(0)
-        vertices.append(1)
-        
-        # color input
-        for k in range(0, 3):
-            vertices.append(1)
-
-    for i in range(-10, 11):    
-        vertices.append(-1)
-        vertices.append(0)
-        vertices.append(float(format(i * 0.1, ".1f")))
-
-        # color input
-        for k in range(0, 3):
-            vertices.append(1)
-        
-        vertices.append(1)
-        vertices.append(0)
-        vertices.append(float(format(i * 0.1, ".1f")))
-        
-        # color input
-        for k in range(0, 3):
-            vertices.append(1)
-
-    print(vertices)
-    '''
-
     vertices = glm.array(glm.float32,
     -1.0, 0, -1, 1, 1, 1, -1.0, 0, 1, 1, 1, 1, -0.9, 0, -1, 1, 1, 1, -0.9, 0, 1, 1, 1, 1, -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
     )
@@ -417,27 +304,13 @@ def draw_frame(vao, MVP, MVP_loc):
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 6)
 
-def draw_cube(vao, MVP, MVP_loc):
-    glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    glDrawArrays(GL_TRIANGLES, 0, 36)
-
-def draw_cube_array(vao, MVP, MVP_loc):
-    glBindVertexArray(vao)
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                MVP_cube = MVP * glm.translate(glm.vec3(1*i, 1*j, 1*k)) * glm.scale(glm.vec3(.5,.5,.5))
-                glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP_cube))
-                glDrawArrays(GL_TRIANGLES, 0, 36)
-
 def draw_grid(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset, g_camera_pos, g_camera_front, g_camera_up
+    global g_P, g_azimuth, g_elevation, g_panning_x_offset, g_panning_y_offset, g_camera_pos, g_camera_front, g_camera_up
 
     # initialize glfw
     if not glfwInit():
@@ -466,17 +339,10 @@ def main():
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
     
-    # prepare vaos
-    vao_cube = prepare_vao_cube()
     vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
-    # # viewport
-    # glViewport(100,100, 200,200)
 
     # initialize projection matrix
-    # ortho_height = 10.
-    # ortho_width = ortho_height * 800/800    # initial width/height
-    # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
 
     # loop until the user closes the window
@@ -489,21 +355,14 @@ def main():
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
         glUseProgram(shader_program)
-        
+
         V = glm.lookAt(g_camera_pos, g_camera_pos + g_camera_front, g_camera_up)
+        
+        # draw grid
+        draw_grid(vao_grid, g_P*V*glm.mat4(), MVP_loc)
 
         # draw world frame
         draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
-
-        M = glm.mat4()
-
-        # draw cube w.r.t. the current frame MVP
-        # draw_cube(vao_cube, g_P*V*M, MVP_loc)
-
-        # draw cube array w.r.t. the current frame MVP
-        # draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
-
-        draw_grid(vao_grid, g_P*V*M, MVP_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
