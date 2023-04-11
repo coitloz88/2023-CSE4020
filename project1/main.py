@@ -7,8 +7,6 @@ import numpy as np
 g_cam_ang = 0.
 g_cam_y_ang = 0.
 
-g_fov = 45.0
-
 # projection mode
 g_projection_is_ortho = False
 g_screen_width, g_screen_height = 800, 800
@@ -145,19 +143,19 @@ def key_callback(window, key, scancode, action, mods):
                 g_projection_is_ortho = not g_projection_is_ortho
                 
                 if g_projection_is_ortho:
-                    ortho_height = 10.
+                    ortho_height = 1.
                     ortho_width = ortho_height * g_screen_width/g_screen_height
                     g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
                 else: 
                     near = 0.5
                     far = 20.0
                     aspect_ratio = g_screen_width/g_screen_height
-                    g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
+                    g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
 
             # g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def framebuffer_size_callback(window, width, height):
-    global g_P, g_fov, g_projection_is_ortho, g_screen_width, g_screen_height
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
 
     glViewport(0, 0, width, height)
 
@@ -171,7 +169,7 @@ def framebuffer_size_callback(window, width, height):
         near = 0.5
         far = 20.0
         aspect_ratio = width/height
-        g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
+        g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
 
 def mouse_button_callback(window, button, action, mods):
 
@@ -223,24 +221,20 @@ def cursor_position_callback(window, x_pos, y_pos):
         # panning
         # g_camera_pos += x_offset * g_camera_front
         # g_camera_front += y_offset * glm.normalize(glm.cross(g_camera_front, g_camera_up))
-        moving_speed = 0.5
+        moving_speed = 0.1
         g_camera_pos += g_camera_up * y_offset * moving_speed
         g_camera_pos -= glm.normalize(glm.cross(g_camera_front, g_camera_up)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
-    global g_P, g_fov, g_screen_width, g_screen_height, g_projection_is_ortho
+    global g_screen_width, g_screen_height, g_camera_pos, g_camera_front
 
-    if g_projection_is_ortho:
-        return
+    # if g_projection_is_ortho:
+    #     return
     
-    g_fov -= y_scroll
+    # g_P = glm.perspective(glm.radians(45.0), g_screen_width / g_screen_height, 0.5, 20)
+    move_speed = 0.05
 
-    if g_fov < 0.1:
-        g_fov = 0.1
-    elif g_fov > 80.0:
-        g_fov = 80.0
-    
-    g_P = glm.perspective(glm.radians(g_fov), g_screen_width / g_screen_height, 0.5, 20)
+    g_camera_pos += g_camera_front * move_speed * y_scroll
 
 def prepare_vao_cube():
     
@@ -496,40 +490,19 @@ def main():
 
         glUseProgram(shader_program)
         
-        cam_ang = np.radians(g_cam_ang)
-        cam_y_ang = np.radians(g_cam_y_ang)
-
-        # camera_pos = glm.vec3(5*np.sin(cam_ang) * np.cos(cam_y_ang), 5*np.sin(cam_y_ang), 5*np.cos(cam_ang)* np.cos(cam_y_ang))
-
-        # view matrix
-        # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
-        # V = glm.lookAt(camera_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
-
-        V = glm.lookAt(g_camera_pos,g_camera_pos + g_camera_front, g_camera_up)
-
-        # V = V * T
-        # # panning camera position with g_panning_x_offset, g_panning_y_offset
+        V = glm.lookAt(g_camera_pos, g_camera_pos + g_camera_front, g_camera_up)
 
         # draw world frame
         draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
 
-        # animating
-        # t = glfwGetTime()
-
-        # # rotation
-        # th = np.radians(t*90)
-        # R = glm.rotate(th, glm.vec3(1,0,0))
-
         M = glm.mat4()
 
-        # # try applying rotation
-        # M = R
-
-        # # draw cube w.r.t. the current frame MVP
+        # draw cube w.r.t. the current frame MVP
         # draw_cube(vao_cube, g_P*V*M, MVP_loc)
 
         # draw cube array w.r.t. the current frame MVP
         # draw_cube_array(vao_cube, g_P*V*M, MVP_loc)
+
         draw_grid(vao_grid, g_P*V*M, MVP_loc)
 
         # swap front and back buffers
