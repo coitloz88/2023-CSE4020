@@ -8,6 +8,10 @@ g_cam_ang = 0.
 g_cam_y_ang = 0.
 g_fov = 45.0
 
+# projection mode
+g_projection_is_ortho = False
+g_screen_width, g_screen_height = 800, 800
+
 # define mouse properties
 last_mouse_x_pos, last_mouse_y_pos = 800 // 2, 800 // 2
 mouse_pressed = {'left': False, 'right': False}
@@ -103,42 +107,60 @@ def y_axis_rotation_fixer(y):
     return y
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
         if action==GLFW_PRESS or action==GLFW_REPEAT:
-            if key==GLFW_KEY_1:
-                g_cam_ang += -10
-            elif key==GLFW_KEY_2:
-                g_cam_ang += 10
-            elif key==GLFW_KEY_3:
-                g_cam_y_ang += -10            
-            elif key==GLFW_KEY_4:
-                g_cam_y_ang += 10
-            elif key==GLFW_KEY_Q:
-                g_panning_x_offset += .5
-            elif key==GLFW_KEY_W:
-                g_panning_x_offset -= .5            
-            elif key==GLFW_KEY_E:
-                g_panning_y_offset += .5
-            elif key==GLFW_KEY_R:
-                g_panning_y_offset -= .5
+            # if key==GLFW_KEY_1:
+            #     g_cam_ang += -10
+            # elif key==GLFW_KEY_2:
+            #     g_cam_ang += 10
+            # elif key==GLFW_KEY_3:
+            #     g_cam_y_ang += -10            
+            # elif key==GLFW_KEY_4:
+            #     g_cam_y_ang += 10
+            # elif key==GLFW_KEY_Q:
+            #     g_panning_x_offset += .5
+            # elif key==GLFW_KEY_W:
+            #     g_panning_x_offset -= .5            
+            # elif key==GLFW_KEY_E:
+            #     g_panning_y_offset += .5
+            # elif key==GLFW_KEY_R:
+            #     g_panning_y_offset -= .5
 
-            g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
+            if key == GLFW_KEY_V:
+                # TODO: ortho와 perspective 전환
+                g_projection_is_ortho = not g_projection_is_ortho
+                
+                if g_projection_is_ortho:
+                    ortho_height = 10.
+                    ortho_width = ortho_height * g_screen_width/g_screen_height
+                    g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+                else: 
+                    near = 0.5
+                    far = 20.0
+                    aspect_ratio = g_screen_width/g_screen_height
+                    g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
+
+            # g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def framebuffer_size_callback(window, width, height):
-    global g_P, g_fov
+    global g_P, g_fov, g_projection_is_ortho, g_screen_width, g_screen_height
 
     glViewport(0, 0, width, height)
 
-    # ortho_height = 10.
-    # ortho_width = ortho_height * width/height
-    # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-    near = 0.5
-    far = 20.0
-    aspect_ratio = width/height
-    g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
+    g_screen_width, g_screen_height = width, height
+
+    if g_projection_is_ortho: 
+        ortho_height = 10.
+        ortho_width = ortho_height * width/height
+        g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+    else: 
+        near = 0.5
+        far = 20.0
+        aspect_ratio = width/height
+        g_P = glm.perspective(glm.radians(g_fov), aspect_ratio, near, far)
 
 def mouse_button_callback(window, button, action, mods):
 
@@ -181,14 +203,19 @@ def cursor_position_callback(window, x_pos, y_pos):
     g_cam_y_ang = y_axis_rotation_fixer(g_cam_y_ang)
 
 def scroll_callback(window, x_scroll, y_scroll):
-    global g_fov
+    global g_P, g_fov, g_screen_width, g_screen_height, g_projection_is_ortho
 
+    if g_projection_is_ortho:
+        return
+    
     g_fov -= y_scroll
 
     if g_fov < 1.0:
         g_fov = 1.0
     elif g_fov > 60.0:
         g_fov = 60.0
+    
+    g_P = glm.perspective(glm.radians(g_fov), g_screen_width / g_screen_height, 0.5, 20)
 
 def prepare_vao_cube():
     
@@ -301,6 +328,26 @@ def prepare_vao_frame():
 
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
+
+    '''
+    vertices = []
+    for i in range(-10, 11):
+        vertices.append(i * 0.5)
+        vertices.append(0)
+        vertices.append(-5)
+        
+        # color input
+        for k in range(0, 3):
+            vertices.append(1)
+        vertices.append(i * 0.5)
+        vertices.append(0)
+        vertices.append(5)
+        
+        # color input
+        for k in range(0, 3):
+            vertices.append(1)
+    '''
+
     vertices = glm.array(glm.float32,
     5, 0, -5.0, 1, 1, 1, -5, 0, -5.0, 1, 1, 1, 5, 0, -4.5, 1, 1, 1, -5, 0, -4.5, 1, 1, 1, 5, 0, -4.0, 1, 1, 1, -5, 0, -4.0, 1, 1, 1, 5, 0, -3.5, 1, 1, 1, -5, 0, -3.5, 1, 1, 1, 5, 0, -3.0, 1, 1, 1, -5, 0, -3.0, 1, 1, 1, 5, 0, -2.5, 1, 1, 1, -5, 0, -2.5, 1, 1, 1, 5, 0, -2.0, 1, 1, 1, -5, 0, -2.0, 1, 1, 1, 5, 0, -1.5, 1, 1, 1, -5, 0, -1.5, 1, 1, 1, 5, 0, -1.0, 1, 1, 1, -5, 0, -1.0, 1, 1, 1, 5, 0, -0.5, 1, 1, 1, -5, 0, -0.5, 1, 1, 1, 5, 0, 0.0, 1, 1, 1, -5, 0, 0.0, 1, 1, 1, 5, 0, 0.5, 1, 1, 1, -5, 0, 0.5, 1, 1, 1, 5, 0, 1.0, 1, 1, 1, -5, 0, 1.0, 1, 1, 1, 5, 0, 1.5, 1, 1, 1, -5, 0, 1.5, 1, 1, 1, 5, 0, 2.0, 1, 1, 1, -5, 0, 2.0, 1, 1, 1, 5, 0, 2.5, 1, 1, 1, -5, 0, 2.5, 1, 1, 1, 5, 0, 3.0, 1, 1, 1, -5, 0, 3.0, 1, 1, 1, 5, 0, 3.5, 1, 1, 1, -5, 0, 3.5, 1, 1, 1, 5, 0, 4.0, 1, 1, 1, -5, 0, 4.0, 1, 1, 1, 5, 0, 4.5, 1, 1, 1, -5, 0, 4.5, 1, 1, 1, 5, 0, 5.0, 1, 1, 1, -5, 0, 5.0, 1, 1, 1,
     -5.0, 0, -5, 1, 1, 1, -5.0, 0, 5, 1, 1, 1, -4.5, 0, -5, 1, 1, 1, -4.5, 0, 5, 1, 1, 1, -4.0, 0, -5, 1, 1, 1, -4.0, 0, 5, 1, 1, 1, -3.5, 0, -5, 1, 1, 1, -3.5, 0, 5, 1, 1, 1, -3.0, 0, -5, 1, 1, 1, -3.0, 0, 5, 1, 1, 1, -2.5, 0, -5, 1, 1, 1, -2.5, 0, 5, 1, 1, 1, -2.0, 0, -5, 1, 1, 1, -2.0, 0, 5, 1, 1, 1, -1.5, 0, -5, 1, 1, 1, -1.5, 0, 5, 1, 1, 1, -1.0, 0, -5, 1, 1, 1, -1.0, 0, 5, 1, 1, 1, -0.5, 0, -5, 1, 1, 1, -0.5, 0, 5, 1, 1, 1, 0.0, 0, -5, 1, 1, 1, 0.0, 0, 5, 1, 1, 1, 0.5, 0, -5, 1, 1, 1, 0.5, 0, 5, 1, 1, 1, 1.0, 0, -5, 1, 1, 1, 1.0, 0, 5, 1, 1, 1, 1.5, 0, -5, 1, 1, 1, 1.5, 0, 5, 1, 1, 1, 2.0, 0, -5, 1, 1, 1, 2.0, 0, 5, 1, 1, 1, 2.5, 0, -5, 1, 1, 1, 2.5, 0, 5, 1, 1, 1, 3.0, 0, -5, 1, 1, 1, 3.0, 0, 5, 1, 1, 1, 3.5, 0, -5, 1, 1, 1, 3.5, 0, 5, 1, 1, 1, 4.0, 0, -5, 1, 1, 1, 4.0, 0, 5, 1, 1, 1, 4.5, 0, -5, 1, 1, 1, 4.5, 0, 5, 1, 1, 1, 5.0, 0, -5, 1, 1, 1, 5.0, 0, 5, 1, 1, 1
@@ -352,7 +399,7 @@ def draw_grid(vao, MVP, MVP_loc):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset, g_fov
+    global g_P, g_cam_ang, g_cam_y_ang, g_panning_x_offset, g_panning_y_offset
 
     # initialize glfw
     if not glfwInit():
@@ -392,7 +439,7 @@ def main():
     # ortho_height = 10.
     # ortho_width = ortho_height * 800/800    # initial width/height
     # g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-    g_P = glm.perspective(glm.radians(g_fov), 1, 0.5, 20)
+    g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -405,8 +452,6 @@ def main():
 
         glUseProgram(shader_program)
         
-        g_P = glm.perspective(glm.radians(g_fov), 1, 0.5, 20)
-
         cam_ang = np.radians(g_cam_ang)
         cam_y_ang = np.radians(g_cam_y_ang)
 
