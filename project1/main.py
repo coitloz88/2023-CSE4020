@@ -23,6 +23,9 @@ g_camera_pos = glm.vec3(0., 0., -1.)
 g_camera_front = glm.vec3(0., 0., 1.)
 g_camera_up = glm.vec3(0., 1., 0.)
 
+# show frame
+g_show_frame = True
+
 g_vertex_shader_src = '''
 #version 330 core
 
@@ -101,22 +104,23 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
-    else:
-        if key == GLFW_KEY_V and action == GLFW_PRESS:
-            g_projection_is_ortho = not g_projection_is_ortho
-            
-            if g_projection_is_ortho:
-                ortho_height = 1.
-                ortho_width = ortho_height * g_screen_width/g_screen_height
-                g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-            else: 
-                near = 0.5
-                far = 20.0
-                aspect_ratio = g_screen_width/g_screen_height
-                g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
+    elif key == GLFW_KEY_V and action == GLFW_PRESS:
+        g_projection_is_ortho = not g_projection_is_ortho
+        
+        if g_projection_is_ortho:
+            ortho_height = 1.
+            ortho_width = ortho_height * g_screen_width/g_screen_height
+            g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+        else: 
+            near = 0.5
+            far = 20.0
+            aspect_ratio = g_screen_width/g_screen_height
+            g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
+    elif key == GLFW_KEY_F and action == GLFW_PRESS:
+        g_show_frame = not g_show_frame
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
@@ -265,7 +269,7 @@ def draw_grid(vao, MVP, MVP_loc):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_azimuth, g_elevation, g_camera_pos, g_camera_front, g_camera_up
+    global g_P, g_azimuth, g_elevation, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
 
     # initialize glfw
     if not glfwInit():
@@ -276,7 +280,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, 'blender-like camera', None, None)
+    window = glfwCreateWindow(800, 800, 'project1: blender-like camera', None, None)
     if not window:
         glfwTerminate()
         return
@@ -317,7 +321,8 @@ def main():
         draw_grid(vao_grid, g_P*V*glm.mat4(), MVP_loc)
 
         # draw world frame
-        draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
+        if g_show_frame:
+            draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
