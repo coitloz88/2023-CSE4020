@@ -7,6 +7,11 @@ import numpy as np
 g_cam_ang = 0.
 g_cam_height = .1
 
+# euler angles
+g_alpha_ang = 0.
+g_beta_ang = 0.
+g_gamma_ang = 0.
+
 g_vertex_shader_src_lighting = '''
 #version 330 core
 
@@ -160,7 +165,8 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 
 
 def key_callback(window, key, scancode, action, mods):
-    global g_cam_ang, g_cam_height
+    global g_cam_ang, g_cam_height, g_alpha_ang, g_beta_ang, g_gamma_ang
+
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
@@ -173,6 +179,24 @@ def key_callback(window, key, scancode, action, mods):
                 g_cam_height += .1
             elif key==GLFW_KEY_W:
                 g_cam_height += -.1
+            
+            # euler angles movement
+            elif key == GLFW_KEY_A:
+                g_alpha_ang += 10
+            elif key == GLFW_KEY_Z:
+                g_alpha_ang -= 10
+            elif key == GLFW_KEY_S:
+                g_beta_ang += 10
+            elif key == GLFW_KEY_X:
+                g_beta_ang -= 10
+            elif key == GLFW_KEY_D:
+                g_gamma_ang += 10
+            elif key == GLFW_KEY_C:
+                g_gamma_ang -= 10     
+            elif key == GLFW_KEY_V:
+                g_alpha_ang = 0.
+                g_beta_ang = 0.
+                g_gamma_ang = 0.
 
 def prepare_vao_cube():
     # prepare vertex data (in main memory)
@@ -295,6 +319,8 @@ def draw_cube(vao, MVP, M, matcolor, unif_locs):
     glDrawArrays(GL_TRIANGLES, 0, 36)
 
 def main():
+    global g_alpha_ang, g_beta_ang, g_gamma_ang
+
     # initialize glfw
     if not glfwInit():
         return
@@ -347,15 +373,11 @@ def main():
         glUseProgram(shader_color)
         draw_frame(vao_frame, P*V, unif_locs_color)
 
-        # ZYX Euler angles
-        t = glfwGetTime()
-        xang = t
-        yang = glm.radians(30)
-        zang = glm.radians(30)
-        Rx = glm.rotate(xang, (1,0,0))
-        Ry = glm.rotate(yang, (0,1,0))
-        Rz = glm.rotate(zang, (0,0,1))
-        M = glm.mat4(Rz * Ry * Rx)
+        # ZXZ Euler angles
+        R_z_alpha = glm.rotate(glm.radians(g_alpha_ang), (0,0,1))
+        R_x_beta = glm.rotate(glm.radians(g_beta_ang), (1,0,0))
+        R_z_gamma = glm.rotate(glm.radians(g_gamma_ang), (0,0,1))
+        M = glm.mat4(R_z_gamma * R_x_beta * R_z_alpha)
 
         # set view_pos uniform in shader_lighting
         glUseProgram(shader_lighting)
