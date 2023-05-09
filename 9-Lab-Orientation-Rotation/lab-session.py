@@ -377,7 +377,7 @@ def main():
         R_z_alpha = glm.rotate(glm.radians(g_alpha_ang), (0,0,1))
         R_x_beta = glm.rotate(glm.radians(g_beta_ang), (1,0,0))
         R_z_gamma = glm.rotate(glm.radians(g_gamma_ang), (0,0,1))
-        M = glm.mat4(R_z_gamma * R_x_beta * R_z_alpha)
+        M = glm.mat4(R_z_alpha * R_x_beta * R_z_gamma)
 
         # set view_pos uniform in shader_lighting
         glUseProgram(shader_lighting)
