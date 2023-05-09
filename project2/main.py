@@ -177,34 +177,49 @@ def drop_callback(window, count, filepath):
         print("err: drop only one file")
         return
 
+    load_obj_file(filepath)
+
+def load_obj_file(filepath):
+    if len(filepath) == 0:
+        print("err: file format is null")
+        return
+
+    # load obj file
+    vertex_indices = []
+    uv_indices = []
+    normal_indices = []
+
     temp_vertices = []
     temp_normals = []
     temp_uvs = []
 
-    if len(filepath) > 0:
+    out_vertices = []
+    out_uvs = []
+    out_normals = []
 
-        # TODO: load obj files
-        with open(filepath, 'r') as f:
-            lines = f.readlines()
-        
+    # open file by length
+    with open(filepath, 'r') as f:
+        lines = f.readlines()
+    
+        # parse obj text
         for line in lines:
             words = line.split()
             # If the line starts with 'v', parse the vertex data.
             if words[0] == 'v':
-                vertex = np.array([float(words[1]), float(words[2]), float(words[3])])
+                vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
                 temp_vertices.append(vertex)
 
-            # If the line starts with 'vt', parse the uv data.
+            # If the line starts with 'vt', parse the texture data of vertex.
             elif words[0] == 'vt':
-                uv = np.array([float(words[1]), -float(words[2])])
+                uv = glm.vec3(float(words[1]), -float(words[2]))
                 temp_uvs.append(uv)
 
-            # If the line starts with 'vn', parse the normal data.
+            # If the line starts with 'vn', parse the normal data of vertex.
             elif words[0] == 'vn':
-                normal = np.array([float(words[1]), float(words[2]), float(words[3])])
+                normal = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
                 temp_normals.append(normal)
 
-            # If the line starts with 'f', parse the face data.
+            # If the line starts with 'f', parse the surface(면) data.
             elif words[0] == 'f':
                 vertex_indices.append(int(words[1].split('/')[0]) - 1)
                 vertex_indices.append(int(words[2].split('/')[0]) - 1)
@@ -221,6 +236,27 @@ def drop_callback(window, count, filepath):
             # Ignore any other lines.
             else:
                 continue
+
+        # for each vertex of triangle
+        vertex_indices_len = len(vertex_indices)
+        for i in range(vertex_indices_len):
+            # get the indices of its attributes
+            vertex_index = vertex_indices[i]
+            uv_index = uv_indices[i]
+            normal_index = normal_indices[i]
+
+            # get the attributes thanks to the index
+            vertex = glm.vec3(temp_vertices[vertex_index - 1])
+            uv = glm.vec2(temp_uvs[uv_index - 1])
+            normal = glm.vec3(temp_normals[normal_index - 1])
+            
+            # put the attributes in buffers
+            out_vertices.append(vertex)
+            out_uvs.append(uv)
+            out_normals.append(normal)
+    
+    
+    return {'vertices': out_vertices, 'uvs': out_uvs, 'normals': out_normals}
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -282,6 +318,10 @@ def prepare_vao_grid():
     glEnableVertexAttribArray(1)
 
     return VAO
+
+def prepare_vao_obj(vertices):
+    
+    
 
 def draw_frame(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
