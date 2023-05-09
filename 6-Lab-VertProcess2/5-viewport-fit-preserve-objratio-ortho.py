@@ -1,4 +1,3 @@
-
 from OpenGL.GL import *
 from glfw.GLFW import *
 import glm
@@ -329,4 +328,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
