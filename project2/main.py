@@ -172,6 +172,56 @@ def scroll_callback(window, x_scroll, y_scroll):
     global g_cam
     g_cam.scroll(0.05, y_scroll)
 
+def drop_callback(window, count, filepath):
+    if count > 1:
+        print("err: drop only one file")
+        return
+
+    temp_vertices = []
+    temp_normals = []
+    temp_uvs = []
+
+    if len(filepath) > 0:
+
+        # TODO: load obj files
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+        
+        for line in lines:
+            words = line.split()
+            # If the line starts with 'v', parse the vertex data.
+            if words[0] == 'v':
+                vertex = np.array([float(words[1]), float(words[2]), float(words[3])])
+                temp_vertices.append(vertex)
+
+            # If the line starts with 'vt', parse the uv data.
+            elif words[0] == 'vt':
+                uv = np.array([float(words[1]), -float(words[2])])
+                temp_uvs.append(uv)
+
+            # If the line starts with 'vn', parse the normal data.
+            elif words[0] == 'vn':
+                normal = np.array([float(words[1]), float(words[2]), float(words[3])])
+                temp_normals.append(normal)
+
+            # If the line starts with 'f', parse the face data.
+            elif words[0] == 'f':
+                vertex_indices.append(int(words[1].split('/')[0]) - 1)
+                vertex_indices.append(int(words[2].split('/')[0]) - 1)
+                vertex_indices.append(int(words[3].split('/')[0]) - 1)
+
+                uv_indices.append(int(words[1].split('/')[1]) - 1)
+                uv_indices.append(int(words[2].split('/')[1]) - 1)
+                uv_indices.append(int(words[3].split('/')[1]) - 1)
+
+                normal_indices.append(int(words[1].split('/')[2]) - 1)
+                normal_indices.append(int(words[2].split('/')[2]) - 1)
+                normal_indices.append(int(words[3].split('/')[2]) - 1)
+
+            # Ignore any other lines.
+            else:
+                continue
+
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
     vertices = glm.array(glm.float32,
@@ -267,6 +317,8 @@ def main():
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
     glfwSetScrollCallback(window, scroll_callback)
+    glfwSetDropCallback(window, drop_callback)
+
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
