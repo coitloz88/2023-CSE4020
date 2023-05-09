@@ -3,12 +3,10 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
+from camera import Camera as cam
 
-g_azimuth = 0.
-g_elevation = 0.
+g_cam = cam()
 
-# projection mode
-g_projection_is_ortho = False
 g_screen_width, g_screen_height = 800, 800
 
 # define mouse properties
@@ -17,11 +15,6 @@ mouse_pressed = {'left': False, 'right': False}
 
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
 g_P = glm.mat4()
-
-# camera data
-g_camera_pos = glm.vec3(0., 0., -1.)
-g_camera_front = glm.vec3(0., 0., 1.)
-g_camera_up = glm.vec3(0., 1., 0.)
 
 # show frame
 g_show_frame = True
@@ -104,13 +97,13 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
+    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     elif key == GLFW_KEY_V and action == GLFW_PRESS:
-        g_projection_is_ortho = not g_projection_is_ortho
+        g_cam.change_projection_mode()
         
-        if g_projection_is_ortho:
+        if g_cam.is_projection_ortho:
             ortho_height = 1.
             ortho_width = ortho_height * g_screen_width/g_screen_height
             g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
@@ -123,16 +116,16 @@ def key_callback(window, key, scancode, action, mods):
         g_show_frame = not g_show_frame
 
 def framebuffer_size_callback(window, width, height):
-    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
+    global g_P, g_cam, g_screen_width, g_screen_height
 
     glViewport(0, 0, width, height)
 
     g_screen_width, g_screen_height = width, height
 
-    if g_projection_is_ortho: 
+    if g_cam.is_projection_ortho:
         ortho_height = 10.
         ortho_width = ortho_height * width/height
-        g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
+        g_P = glm.ortho(-ortho_width*.5, ortho_width*.5, -ortho_height*.5, ortho_height*.5, -10,10)
     else: 
         near = 0.5
         far = 20.0
@@ -157,7 +150,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global mouse_pressed, g_azimuth, g_elevation, last_mouse_x_pos, last_mouse_y_pos, g_camera_pos, g_camera_front, g_camera_up, is_first_mouse
+    global mouse_pressed, g_cam, last_mouse_x_pos, last_mouse_y_pos
 
     sensitivity = 0.02
 
@@ -169,33 +162,15 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     if mouse_pressed.get('left'):
         # rotate orbit
-        g_azimuth += x_offset
-        g_elevation += y_offset
-        
-        front = glm.vec3(
-            np.sin(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation)),
-            np.sin(np.radians(g_elevation)),
-            np.cos(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation))
-        )
-        g_camera_front = glm.normalize(front)
-
-        up = glm.vec3(
-            - np.sin(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation)),
-            np.cos(np.radians(g_elevation)),
-            -np.cos(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation))        
-        )
-        g_camera_up = glm.normalize(up)
+        g_cam.rotate_orbit(x_offset, y_offset)
 
     elif mouse_pressed.get('right'):
         # panning
-        moving_speed = 0.05
-        g_camera_pos += g_camera_up * y_offset * moving_speed + glm.normalize(glm.cross(g_camera_up, g_camera_front)) * x_offset * moving_speed
+        g_cam.panning(0.05, x_offset, y_offset)
 
 def scroll_callback(window, x_scroll, y_scroll):
-    global g_screen_width, g_screen_height, g_camera_pos, g_camera_front
-    
-    move_speed = 0.05
-    g_camera_pos += g_camera_front * move_speed * y_scroll
+    global g_cam
+    g_cam.scroll(0.05, y_scroll)
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -269,7 +244,7 @@ def draw_grid(vao, MVP, MVP_loc):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_azimuth, g_elevation, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
+    global g_P, g_cam, g_show_frame
 
     # initialize glfw
     if not glfwInit():
@@ -280,7 +255,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, 'project1: blender-like camera', None, None)
+    window = glfwCreateWindow(800, 800, 'project2: Obj viewer & Hierarchical Model', None, None)
     if not window:
         glfwTerminate()
         return
@@ -315,7 +290,7 @@ def main():
 
         glUseProgram(shader_program)
 
-        V = glm.lookAt(g_camera_pos, g_camera_pos + g_camera_front, g_camera_up)
+        V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
         
         # draw grid
         draw_grid(vao_grid, g_P*V*glm.mat4(), MVP_loc)
