@@ -38,11 +38,12 @@ in vec3 vout_normal;
 out vec4 FragColor;
 
 uniform vec3 view_pos;
+uniform vec3 light_pos;
 
 void main()
 {
     // light and material properties
-    vec3 light_pos = vec3(3,2,4);
+    // vec3 light_pos = vec3(3,2,4);
     vec3 light_color = vec3(1,1,1);
     vec3 material_color = vec3(1,0,0);
     float material_shininess = 32.0;
@@ -127,7 +128,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
 def key_callback(window, key, scancode, action, mods):
     global g_cam_ang, g_cam_height
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        glfwSetWindowShouldClose(window, GLFW_TRUE)
     else:
         if action==GLFW_PRESS or action==GLFW_REPEAT:
             if key==GLFW_KEY_1:
@@ -224,14 +225,14 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '4-all-components-phong-facenorm', None, None)
+    window = glfwCreateWindow(800, 800, '2020028586', None, None)
     if not window:
         glfwTerminate()
         return
     glfwMakeContextCurrent(window)
 
     # register event callbacks
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window, key_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
@@ -240,6 +241,7 @@ def main():
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
     M_loc = glGetUniformLocation(shader_program, 'M')
     view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
+    light_pos_loc = glGetUniformLocation(shader_program, 'light_pos')
 
     # prepare vaos
     vao_cube = prepare_vao_cube()
@@ -257,7 +259,6 @@ def main():
         view_pos = glm.vec3(5*np.sin(g_cam_ang),g_cam_height,5*np.cos(g_cam_ang))
         V = glm.lookAt(view_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
 
-
         # animating
         t = glfwGetTime()
 
@@ -267,8 +268,9 @@ def main():
 
         M = glm.mat4()
 
-        # # try applying rotation
-        # M = R
+        # try applying rotation
+        light_pos = glm.vec3(R * glm.vec4(2, 2, 0, 1))
+        # light pos
 
         # update uniforms
         MVP = P*V*M
@@ -276,6 +278,7 @@ def main():
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
         glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
         glUniform3f(view_pos_loc, view_pos.x, view_pos.y, view_pos.z)
+        glUniform3f(light_pos_loc, light_pos.x, light_pos.y, light_pos.z)
 
         # draw cube w.r.t. the current frame MVP
         glBindVertexArray(vao_cube)
