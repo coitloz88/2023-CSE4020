@@ -3,11 +3,12 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
-from camera import Camera as cam
-from load_obj import Mesh as mesh
 
-g_cam = cam()
+g_azimuth = 0.
+g_elevation = 0.
 
+# projection mode
+g_projection_is_ortho = False
 g_screen_width, g_screen_height = 800, 800
 
 # define mouse properties
@@ -16,6 +17,11 @@ mouse_pressed = {'left': False, 'right': False}
 
 # now projection matrix P is a global variable so that it can be accessed from main() and framebuffer_size_callback()
 g_P = glm.mat4()
+
+# camera data
+g_camera_pos = glm.vec3(0., 0., -1.)
+g_camera_front = glm.vec3(0., 0., 1.)
+g_camera_up = glm.vec3(0., 1., 0.)
 
 # show frame
 g_show_frame = True
@@ -37,7 +43,7 @@ void main()
 
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_color = vec4(1., 1., 1., 1.); //TODO: vin_color로 수정
+    vout_color = vec4(vin_color, 1.);
 }
 '''
 
@@ -98,13 +104,13 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     elif key == GLFW_KEY_V and action == GLFW_PRESS:
-        g_cam.change_projection_mode()
+        g_projection_is_ortho = not g_projection_is_ortho
         
-        if g_cam.is_projection_ortho:
+        if g_projection_is_ortho:
             ortho_height = 1.
             ortho_width = ortho_height * g_screen_width/g_screen_height
             g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
@@ -117,16 +123,16 @@ def key_callback(window, key, scancode, action, mods):
         g_show_frame = not g_show_frame
 
 def framebuffer_size_callback(window, width, height):
-    global g_P, g_cam, g_screen_width, g_screen_height
+    global g_P, g_projection_is_ortho, g_screen_width, g_screen_height
 
     glViewport(0, 0, width, height)
 
     g_screen_width, g_screen_height = width, height
 
-    if g_cam.is_projection_ortho:
+    if g_projection_is_ortho: 
         ortho_height = 10.
         ortho_width = ortho_height * width/height
-        g_P = glm.ortho(-ortho_width*.5, ortho_width*.5, -ortho_height*.5, ortho_height*.5, -10,10)
+        g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
     else: 
         near = 0.5
         far = 20.0
@@ -151,7 +157,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     # manage cursor position callback event
 
-    global mouse_pressed, g_cam, last_mouse_x_pos, last_mouse_y_pos
+    global mouse_pressed, g_azimuth, g_elevation, last_mouse_x_pos, last_mouse_y_pos, g_camera_pos, g_camera_front, g_camera_up, is_first_mouse
 
     sensitivity = 0.02
 
@@ -163,96 +169,36 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     if mouse_pressed.get('left'):
         # rotate orbit
-        g_cam.rotate_orbit(x_offset, y_offset)
+        g_azimuth += x_offset
+        g_elevation += y_offset
+        
+        front = glm.vec3(
+            np.sin(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation)),
+            np.sin(np.radians(g_elevation)),
+            np.cos(np.radians(g_azimuth)) * np.cos(np.radians(g_elevation))
+        )
+        g_camera_front = glm.normalize(front)
+
+        up = glm.vec3(
+            - np.sin(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation)),
+            np.cos(np.radians(g_elevation)),
+            -np.cos(np.radians(g_azimuth)) * np.sin(np.radians(g_elevation))        
+        )
+        g_camera_up = glm.normalize(up)
 
     elif mouse_pressed.get('right'):
         # panning
-        g_cam.panning(0.05, x_offset, y_offset)
+        moving_speed = 0.05
+        g_camera_pos += g_camera_up * y_offset * moving_speed + glm.normalize(glm.cross(g_camera_up, g_camera_front)) * x_offset * moving_speed
 
 def scroll_callback(window, x_scroll, y_scroll):
-    global g_cam
-    g_cam.scroll(0.05, y_scroll)
+    global g_screen_width, g_screen_height, g_camera_pos, g_camera_front
+    
+    move_speed = 0.05
+    g_camera_pos += g_camera_front * move_speed * y_scroll
 
 def drop_callback(window, filepath):
-    load_obj_file(filepath)
-
-def load_obj_file(filepath):
-    if len(filepath) == 0:
-        print("err: file format is null")
-        return
-
-    # load obj file
-    vertex_indices = []
-    uv_indices = []
-    normal_indices = []
-
-    temp_vertices = []
-    temp_normals = []
-    temp_uvs = []
-
-    out_vertices = []
-    out_uvs = []
-    out_normals = []
-
-    # open file by length
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
-    
-        # parse obj text
-        for line in lines:
-            words = line.split()
-            # If the line starts with 'v', parse the vertex data.
-            if words[0] == 'v':
-                vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_vertices.append(vertex)
-
-            # If the line starts with 'vt', parse the texture data of vertex.
-            elif words[0] == 'vt':
-                uv = glm.vec2(float(words[1]), -float(words[2]))
-                temp_uvs.append(uv)
-
-            # If the line starts with 'vn', parse the normal data of vertex.
-            elif words[0] == 'vn':
-                normal = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_normals.append(normal)
-
-            # If the line starts with 'f', parse the surface(면) data.
-            elif words[0] == 'f':
-                vertex_indices.append(int(words[1].split('/')[0]) - 1)
-                vertex_indices.append(int(words[2].split('/')[0]) - 1)
-                vertex_indices.append(int(words[3].split('/')[0]) - 1)
-
-                uv_indices.append(int(words[1].split('/')[1]) - 1)
-                uv_indices.append(int(words[2].split('/')[1]) - 1)
-                uv_indices.append(int(words[3].split('/')[1]) - 1)
-
-                normal_indices.append(int(words[1].split('/')[2]) - 1)
-                normal_indices.append(int(words[2].split('/')[2]) - 1)
-                normal_indices.append(int(words[3].split('/')[2]) - 1)
-
-            # Ignore any other lines.
-            else:
-                continue
-
-        # for each vertex of triangle
-        vertex_indices_len = len(vertex_indices)
-        for i in range(vertex_indices_len):
-            # get the indices of its attributes
-            vertex_index = vertex_indices[i]
-            uv_index = uv_indices[i]
-            normal_index = normal_indices[i]
-
-            # get the attributes thanks to the index
-            vertex = glm.vec3(temp_vertices[vertex_index - 1])
-            uv = glm.vec2(temp_uvs[uv_index - 1])
-            normal = glm.vec3(temp_normals[normal_index - 1])
-            
-            # put the attributes in buffers
-            out_vertices.append(vertex)
-            out_uvs.append(uv)
-            out_normals.append(normal)
-    
-    return {'vertices': np.array(out_vertices), 'uvs': np.array(out_uvs), 'normals': np.array(out_normals)}
+    print("input filepath: " + str(filepath))
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -315,23 +261,6 @@ def prepare_vao_grid():
 
     return VAO
 
-def prepare_vao_obj(vertices):
-    VAO = glGenVertexArrays(1)
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    return VAO
-
 def draw_frame(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
@@ -342,13 +271,8 @@ def draw_grid(vao, MVP, MVP_loc):
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
 
-def draw_obj(vao, MVP, MVP_loc, length):
-    glBindVertexArray(vao)    
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
-
 def main():
-    global g_P, g_cam, g_show_frame
+    global g_P, g_azimuth, g_elevation, g_camera_pos, g_camera_front, g_camera_up, g_show_frame
 
     # initialize glfw
     if not glfwInit():
@@ -359,7 +283,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, 'project2: Obj viewer & Hierarchical Model', None, None)
+    window = glfwCreateWindow(800, 800, 'project1: blender-like camera', None, None)
     if not window:
         glfwTerminate()
         return
@@ -371,22 +295,16 @@ def main():
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
     glfwSetScrollCallback(window, scroll_callback)
-    # glfwSetDropCallback(window, drop_callback)
+    glfwSetDropCallback(window, drop_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
-    # load obj file
-    mesh_mgr = mesh()
-    mesh_mgr.parse_obj_str("C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\sphere-tri.obj")
-
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
-
-    # prepare vao
+    
     vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
-    vao_mesh = mesh_mgr.prepare_vao_mesh()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
@@ -402,18 +320,14 @@ def main():
 
         glUseProgram(shader_program)
 
-        M = glm.mat4()
-        V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
+        V = glm.lookAt(g_camera_pos, g_camera_pos + g_camera_front, g_camera_up)
         
         # draw grid
-        draw_grid(vao_grid, g_P*V*M, MVP_loc)
+        draw_grid(vao_grid, g_P*V*glm.mat4(), MVP_loc)
 
         # draw world frame
         if g_show_frame:
-            draw_frame(vao_frame, g_P*V*M, MVP_loc)
-        
-        # draw obj file
-        mesh_mgr.draw_mesh(vao_mesh, g_P*V*M, MVP_loc)
+            draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
