@@ -211,7 +211,7 @@ def load_obj_file(filepath):
 
             # If the line starts with 'vt', parse the texture data of vertex.
             elif words[0] == 'vt':
-                uv = glm.vec3(float(words[1]), -float(words[2]))
+                uv = glm.vec2(float(words[1]), -float(words[2]))
                 temp_uvs.append(uv)
 
             # If the line starts with 'vn', parse the normal data of vertex.
@@ -255,8 +255,7 @@ def load_obj_file(filepath):
             out_uvs.append(uv)
             out_normals.append(normal)
     
-    
-    return {'vertices': out_vertices, 'uvs': out_uvs, 'normals': out_normals}
+    return {'vertices': np.array(out_vertices), 'uvs': np.array(out_uvs), 'normals': np.array(out_normals)}
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -320,8 +319,21 @@ def prepare_vao_grid():
     return VAO
 
 def prepare_vao_obj(vertices):
-    
-    
+    VAO = glGenVertexArrays(1)
+    glBindVertexArray(VAO)      # activate VAO
+
+    # create and activate VBO (vertex buffer object)
+    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
+
+    # copy vertex data to VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+    # configure vertex positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
+    glEnableVertexAttribArray(0)
+
+    return VAO
 
 def draw_frame(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
@@ -332,6 +344,11 @@ def draw_grid(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
+
+def draw_obj(vao, MVP, MVP_loc, length):
+    glBindVertexArray(vao)    
+    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+    glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
 
 def main():
     global g_P, g_cam, g_show_frame
@@ -357,16 +374,24 @@ def main():
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
     glfwSetScrollCallback(window, scroll_callback)
-    glfwSetDropCallback(window, drop_callback)
+    # glfwSetDropCallback(window, drop_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
+    # load obj file
+    obj_data = load_obj_file("C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\sample.obj")
+
+    print(obj_data)
+
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
-    
+
+    # prepare vao
     vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
+    vao_obj = prepare_vao_obj(glm.array(obj_data['vertices']))
+    obj_length = len(obj_data['vertices'])
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
@@ -390,6 +415,9 @@ def main():
         # draw world frame
         if g_show_frame:
             draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
+        
+        # draw obj file
+        draw_obj(vao_obj, g_P*V*glm.mat4(), MVP_loc, obj_length)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
