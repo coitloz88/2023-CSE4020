@@ -21,8 +21,14 @@ class Mesh:
         self.__vertex_indices = []
         self.__vnormal_indices = []
 
+        self.__vao = None
+
+    @property
+    def vao(self):
+        return self.__vao
+
     def parse_obj_str(self, filepath):
-        with open(filepath, 'r') as f:
+        with open(filepath[0], 'r') as f:
             lines = f.readlines()
 
             tmp_vertices = []
@@ -111,9 +117,11 @@ class Mesh:
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
         glEnableVertexAttribArray(0)
 
+        self.__vao = VAO
+
         return VAO
     
-    def draw_mesh(self, vao, MVP, MVP_loc):
-        glBindVertexArray(vao)
+    def draw_mesh(self, MVP, MVP_loc):
+        glBindVertexArray(self.__vao)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
         glDrawElements(GL_TRIANGLES, len(self.__vertex_indices), GL_UNSIGNED_INT, None)

@@ -7,6 +7,7 @@ from camera import Camera as cam
 from load_obj import Mesh as mesh
 
 g_cam = cam()
+g_mesh = mesh()
 
 g_screen_width, g_screen_height = 800, 800
 
@@ -174,85 +175,10 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    load_obj_file(filepath)
+    global g_mesh
 
-def load_obj_file(filepath):
-    if len(filepath) == 0:
-        print("err: file format is null")
-        return
-
-    # load obj file
-    vertex_indices = []
-    uv_indices = []
-    normal_indices = []
-
-    temp_vertices = []
-    temp_normals = []
-    temp_uvs = []
-
-    out_vertices = []
-    out_uvs = []
-    out_normals = []
-
-    # open file by length
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
-    
-        # parse obj text
-        for line in lines:
-            words = line.split()
-            # If the line starts with 'v', parse the vertex data.
-            if words[0] == 'v':
-                vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_vertices.append(vertex)
-
-            # If the line starts with 'vt', parse the texture data of vertex.
-            elif words[0] == 'vt':
-                uv = glm.vec2(float(words[1]), -float(words[2]))
-                temp_uvs.append(uv)
-
-            # If the line starts with 'vn', parse the normal data of vertex.
-            elif words[0] == 'vn':
-                normal = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_normals.append(normal)
-
-            # If the line starts with 'f', parse the surface(면) data.
-            elif words[0] == 'f':
-                vertex_indices.append(int(words[1].split('/')[0]) - 1)
-                vertex_indices.append(int(words[2].split('/')[0]) - 1)
-                vertex_indices.append(int(words[3].split('/')[0]) - 1)
-
-                uv_indices.append(int(words[1].split('/')[1]) - 1)
-                uv_indices.append(int(words[2].split('/')[1]) - 1)
-                uv_indices.append(int(words[3].split('/')[1]) - 1)
-
-                normal_indices.append(int(words[1].split('/')[2]) - 1)
-                normal_indices.append(int(words[2].split('/')[2]) - 1)
-                normal_indices.append(int(words[3].split('/')[2]) - 1)
-
-            # Ignore any other lines.
-            else:
-                continue
-
-        # for each vertex of triangle
-        vertex_indices_len = len(vertex_indices)
-        for i in range(vertex_indices_len):
-            # get the indices of its attributes
-            vertex_index = vertex_indices[i]
-            uv_index = uv_indices[i]
-            normal_index = normal_indices[i]
-
-            # get the attributes thanks to the index
-            vertex = glm.vec3(temp_vertices[vertex_index - 1])
-            uv = glm.vec2(temp_uvs[uv_index - 1])
-            normal = glm.vec3(temp_normals[normal_index - 1])
-            
-            # put the attributes in buffers
-            out_vertices.append(vertex)
-            out_uvs.append(uv)
-            out_normals.append(normal)
-    
-    return {'vertices': np.array(out_vertices), 'uvs': np.array(out_uvs), 'normals': np.array(out_normals)}
+    g_mesh.parse_obj_str(filepath)
+    g_mesh.prepare_vao_mesh()
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -348,7 +274,7 @@ def draw_obj(vao, MVP, MVP_loc, length):
     glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
 
 def main():
-    global g_P, g_cam, g_show_frame
+    global g_P, g_cam, g_show_frame, g_mesh
 
     # initialize glfw
     if not glfwInit():
@@ -371,14 +297,10 @@ def main():
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
     glfwSetScrollCallback(window, scroll_callback)
-    # glfwSetDropCallback(window, drop_callback)
+    glfwSetDropCallback(window, drop_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
-
-    # load obj file
-    mesh_mgr = mesh()
-    mesh_mgr.parse_obj_str("C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\sphere-tri.obj")
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
@@ -386,7 +308,6 @@ def main():
     # prepare vao
     vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
-    vao_mesh = mesh_mgr.prepare_vao_mesh()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
@@ -413,7 +334,8 @@ def main():
             draw_frame(vao_frame, g_P*V*M, MVP_loc)
         
         # draw obj file
-        mesh_mgr.draw_mesh(vao_mesh, g_P*V*M, MVP_loc)
+        if g_mesh.vao is not None:
+            g_mesh.draw_mesh(g_P*V*M, MVP_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
