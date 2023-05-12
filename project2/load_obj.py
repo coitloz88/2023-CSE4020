@@ -65,16 +65,8 @@ class Mesh:
                     tmp_vnormals.append(vnormal)
                 
                 # 'f': parse the face data
-                # TODO: parse 4 or more face data line
                 elif words[0] == 'f':
                     vertex_len = len(words) - 1
-
-                    # TODO: vertex_len을 key로 하는 dictionary에 face의 total number 저장
-
-                    # for idx in range(vertex_len):
-                        # parsed_face_data = words[idx + 1].split('//')
-                        # face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                        # face_vnormal_indices.append(int(parsed_face_data[1]) - 1)
                     
                     for i in range(0, vertex_len - 2):
                         for j in range(i + 1, vertex_len - 1):
@@ -82,19 +74,19 @@ class Mesh:
                                 # 삼각형 하나의 index가 i, j, k로 결정됨
 
                                 # +1을 하는 이유: 0번째 요소는 'f'이기 때문
-                                parsed_face_data = words[i + 1].split('//')              
+                                parsed_face_data = words[i + 1].split('/')
                                 # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
                                 # array에는 0부터 접근가능하기 때문              
                                 face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
-                                face_vnormal_indices.append(int(parsed_face_data[1]) - 1)
+                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                                parsed_face_data = words[j + 1].split('//')                            
+                                parsed_face_data = words[j + 1].split('/')                            
                                 face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                                face_vnormal_indices.append(int(parsed_face_data[1]) - 1)
+                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                                parsed_face_data = words[k + 1].split('//')                            
+                                parsed_face_data = words[k + 1].split('/')                            
                                 face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                                face_vnormal_indices.append(int(parsed_face_data[1]) - 1)
+                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
                     if faces_cnt.get(vertex_len) is None:
                         faces_cnt[vertex_len] = 0
