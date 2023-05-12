@@ -121,8 +121,8 @@ def key_callback(window, key, scancode, action, mods):
         g_show_frame = not g_show_frame
     
     elif key == GLFW_KEY_H and action == GLFW_PRESS:
-        g_mesh.change_animating_mode(not g_mesh.is_animating)
-        if(g_mesh.is_animating):
+        g_animator.change_animating_mode(not g_animator.is_animating)
+        if(g_animator.is_animating):
             g_animator.prepare_animating()
 
 
@@ -184,9 +184,9 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_mesh
+    global g_meshg, g_animator
 
-    g_mesh.change_animating_mode(False)
+    g_animator.change_animating_mode(False)
     g_mesh.parse_obj_str(filepath[0])
     g_mesh.prepare_vao_mesh()
 
@@ -303,9 +303,9 @@ def main():
         draw_grid(vao_grid)
         
         # draw obj file
-        if g_mesh.vao is not None and not g_mesh.is_animating:
+        if g_mesh.vao is not None and not g_animator.is_animating:
             g_mesh.draw_mesh(g_P*V*M, MVP_loc)
-        elif g_mesh.is_animating:
+        elif g_animator.is_animating:
             g_animator.draw_hierarchical(MVP, MVP_loc)
                 
         # swap front and back buffers
