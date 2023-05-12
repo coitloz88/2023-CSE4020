@@ -48,14 +48,12 @@ class Mesh:
             face_vertex_indices = []
             face_vnormal_indices = []
 
-            out_vertices = []
-            out_vnormals = []
-
             for line in lines:
                 words = line.split()
 
                 # 'v': parse the vertex data
                 if words[0] == 'v':
+                    # TODO: color 파싱
                     vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
                     tmp_vertices.append(vertex)
                 
@@ -67,26 +65,23 @@ class Mesh:
                 # 'f': parse the face data
                 elif words[0] == 'f':
                     vertex_len = len(words) - 1
-                    
-                    for i in range(0, vertex_len - 2):
-                        for j in range(i + 1, vertex_len - 1):
-                            for k in range(j + 1, vertex_len):
-                                # 삼각형 하나의 index가 i, j, k로 결정됨
+                    for i in range(1, vertex_len - 1):
+                            # 삼각형 하나의 index가 i, j, k로 결정됨
 
-                                # +1을 하는 이유: 0번째 요소는 'f'이기 때문
-                                parsed_face_data = words[i + 1].split('/')
-                                # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
-                                # array에는 0부터 접근가능하기 때문              
-                                face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
-                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                            # +1을 하는 이유: 0번째 요소는 'f'이기 때문
+                            parsed_face_data = words[1].split('/')
+                            # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
+                            # array에는 0부터 접근가능하기 때문              
+                            face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                                parsed_face_data = words[j + 1].split('/')                            
-                                face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                            parsed_face_data = words[i + 1].split('/')                            
+                            face_vertex_indices.append(int(parsed_face_data[0]) - 1)
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                                parsed_face_data = words[k + 1].split('/')                            
-                                face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                                face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                            parsed_face_data = words[i + 2].split('/')                            
+                            face_vertex_indices.append(int(parsed_face_data[0]) - 1)
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
                     if faces_cnt.get(vertex_len) is None:
                         faces_cnt[vertex_len] = 0
@@ -96,22 +91,6 @@ class Mesh:
                 # ignore other input options, continue
                 else:
                     continue
-
-            # for each vertex of triangle
-            vertex_indices_len = len(face_vertex_indices)
-
-            for i in range(vertex_indices_len):
-                # get the indices of its attributes
-                vertex_index = face_vertex_indices[i]
-                normal_index = face_vnormal_indices[i]
-
-                # get the attributes thanks to the index
-                vertex = glm.vec3(tmp_vertices[vertex_index])
-                normal = glm.vec3(tmp_vnormals[normal_index])
-                
-                # put the attributes in buffers
-                out_vertices.append(vertex)
-                out_vnormals.append(normal)
 
             self.__filepath = filepath[0]
             self.__vertices = np.array(tmp_vertices, np.float32)
@@ -130,8 +109,6 @@ class Mesh:
         print('number of faces with 4 vertices: ' + str(faces_4))
         print('number of faces with more than 4 vertices: ' + str(total_faces_cnt - faces_4 - faces_3))
         print("------------------------")
-
-        return {'vertices': out_vertices, 'normals': out_vnormals}
     
     def prepare_vao_mesh(self):
         vertices = glm.array(self.__vertices)
