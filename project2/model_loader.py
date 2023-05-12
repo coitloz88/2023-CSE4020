@@ -36,6 +36,9 @@ class ModelLoader:
     def change_animating_mode(self, flag):
         self.__is_animating = flag
 
+    def change_fill_mode(self):
+        self.__is_fill = not self.__is_fill
+
     def prepare_animating(self):
         '''
         while 문 밖에서 일어나는 모든 일을 처리한다.

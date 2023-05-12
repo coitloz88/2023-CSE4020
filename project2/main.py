@@ -123,8 +123,10 @@ def key_callback(window, key, scancode, action, mods):
     elif key == GLFW_KEY_H and action == GLFW_PRESS:
         g_animator.change_animating_mode(not g_animator.is_animating)
         if(g_animator.is_animating):
-            g_animator.prepare_animating()
-
+            g_animator.prepare_animating()    
+    
+    elif key == GLFW_KEY_Z and action == GLFW_PRESS:
+        g_animator.change_fill_mode()
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_cam, g_screen_width, g_screen_height
@@ -284,11 +286,14 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-        glClearColor(0.5, 0.5, 0.5, 1.0)
-
-        # render in "wireframe mode"
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-
+        # glClearColor(0.5, 0.5, 0.5, 1.0)
+        
+        # render mode
+        if g_animator.is_fill:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            
         glUseProgram(shader_program)
 
         M = glm.mat4()
