@@ -25,33 +25,37 @@ g_vertex_shader_src = '''
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_color; 
+layout (location = 1) in vec3 vin_normal;
 
-out vec4 vout_color;
+out vec3 vout_surface_pos;
+out vec3 vout_normal;
 
 uniform mat4 MVP;
+uniform mat4 M;
 
 void main()
 {
     // 3D points in homogeneous coordinates
     vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1.0);
-
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_color = vec4(1., 1., 1., 1.); //TODO: vin_color로 수정
-}
+    vout_surface_pos = vec3(M * vec4(vin_pos, 1));
+    vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);}
 '''
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec3 vout_surface_pos;
+in vec3 vout_normal;
 
 out vec4 FragColor;
 
+uniform vec3 view_pos;
+
 void main()
 {
-    FragColor = vout_color;
+    FragColor = vec4(1., 1., 1., 1.);
 }
 '''
 
@@ -121,6 +125,9 @@ def key_callback(window, key, scancode, action, mods):
     elif key == GLFW_KEY_H and action == GLFW_PRESS:
         g_mesh.change_animating_mode(not g_mesh.is_animating)
 
+    elif key == GLFW_KEY_Z and action == GLFW_PRESS:
+        g_mesh.change_solid_mode()
+
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_cam, g_screen_width, g_screen_height
@@ -184,7 +191,7 @@ def drop_callback(window, filepath):
 
     g_mesh.change_animating_mode(False)
     g_mesh.parse_obj_str(filepath)
-    g_mesh.prepare_vao_mesh()
+    g_mesh.prepare_vao_mesh_vertex()
 
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
@@ -214,31 +221,12 @@ def prepare_vao_grid():
 
     return VAO
 
-def prepare_vao_obj(vertices):
-    VAO = glGenVertexArrays(1)
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    return VAO
-
 def draw_grid(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
 
 def draw_obj(vao, MVP, MVP_loc, length):
     glBindVertexArray(vao)    
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
 
 def main():
@@ -272,6 +260,8 @@ def main():
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
+    M_loc = glGetUniformLocation(shader_program, 'M')
+    view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
 
     # prepare vao
     vao_grid = prepare_vao_grid()
@@ -284,6 +274,7 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
+        glClearColor(0.5, 0.5, 0.5, 0.0)
 
         # render in "wireframe mode"
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -292,13 +283,21 @@ def main():
 
         M = glm.mat4()
         V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
-        
+        P = g_P
+
+        MVP = P * V * M
+
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
+        glUniform3f(view_pos_loc, g_cam.pos.x, g_cam.pos.y, g_cam.pos.z)
+
         # draw grid
         draw_grid(vao_grid, g_P*V*M, MVP_loc)
         
         # draw obj file
-        if g_mesh.vao is not None and not g_mesh.is_animating:
-            g_mesh.draw_mesh(g_P*V*M, MVP_loc)
+        if g_mesh.vao is not None:
+            if not g_mesh.is_animating:
+                g_mesh.draw_mesh()
 
         # swap front and back buffers
         glfwSwapBuffers(window)

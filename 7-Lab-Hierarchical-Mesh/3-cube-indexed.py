@@ -103,16 +103,39 @@ def key_callback(window, key, scancode, action, mods):
 def prepare_vao_cube():
     # prepare vertex data (in main memory)
     # 36 vertices for 12 triangles
+    # vertices = glm.array(glm.float32,
+    #     # position      color
+    #     -1 ,  1 ,  1 ,  1, 1, 1, # v0
+    #      1 ,  1 ,  1 ,  1, 1, 1, # v1
+    #      1 , -1 ,  1 ,  1, 1, 1, # v2
+    #     -1 , -1 ,  1 ,  1, 1, 1, # v3
+    #     -1 ,  1 , -1 ,  1, 1, 1, # v4
+    #      1 ,  1 , -1 ,  1, 1, 1, # v5
+    #      1 , -1 , -1 ,  1, 1, 1, # v6
+    #     -1 , -1 , -1 ,  1, 1, 1, # v7
+    # )
+
     vertices = glm.array(glm.float32,
         # position      color
-        -1 ,  1 ,  1 ,  1, 1, 1, # v0
-         1 ,  1 ,  1 ,  1, 1, 1, # v1
-         1 , -1 ,  1 ,  1, 1, 1, # v2
-        -1 , -1 ,  1 ,  1, 1, 1, # v3
-        -1 ,  1 , -1 ,  1, 1, 1, # v4
-         1 ,  1 , -1 ,  1, 1, 1, # v5
-         1 , -1 , -1 ,  1, 1, 1, # v6
-        -1 , -1 , -1 ,  1, 1, 1, # v7
+        -1 ,  1 ,  1 , # 1, 1, 1, # v0
+         1 ,  1 ,  1 , # 1, 1, 1, # v1
+         1 , -1 ,  1 , # 1, 1, 1, # v2
+        -1 , -1 ,  1 , # 1, 1, 1, # v3
+        -1 ,  1 , -1 , # 1, 1, 1, # v4
+         1 ,  1 , -1 , # 1, 1, 1, # v5
+         1 , -1 , -1 , # 1, 1, 1, # v6
+        -1 , -1 , -1 , # 1, 1, 1, # v7
+    )
+
+    colors = glm.array(glm.float32,
+        1, 1, 1,
+        1, 0.1, 0.3,
+        1, 1, 1,        
+        1, 1, 1,
+        1, 0.5, 1,
+        1, 1, 1,
+        1, 1, 1,        
+        1, 1, 1,
     )
 
     # prepare index data
@@ -150,11 +173,41 @@ def prepare_vao_cube():
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound index buffer
 
     # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
 
+    # create and activate VBO (vertex buffer object)
+    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
+
+    indices = glm.array(glm.uint32,
+        2,2,2,
+        2,2,2,
+        2,2,2,
+        4,6,7,
+        0,1,5,
+        0,5,4,
+        3,6,2,
+        3,7,6,
+        1,2,6,
+        2,2,2,
+        2,2,2,
+        2,2,2,
+    )
+
+    # create and activate EBO (element buffer object)
+    EBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)  # activate VBO as a vertex buffer object
+
+    # copy vertex data to VBO
+    glBufferData(GL_ARRAY_BUFFER, colors.nbytes, colors.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+    # copy index data to EBO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound index buffer
+
+    print(len(vertices)*glm.sizeof(glm.float32))
     # configure vertex colors
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(1)
 
     return VAO
@@ -246,6 +299,8 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
+
+        glClearColor(0.5, 0.5, 0.5, 0.0)
 
         # render in "wireframe mode"
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
