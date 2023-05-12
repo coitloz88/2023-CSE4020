@@ -5,9 +5,11 @@ import ctypes
 import numpy as np
 from camera import Camera as cam
 from load_obj import Mesh as mesh
+from model_loader import ModelLoader
 
 g_cam = cam()
 g_mesh = mesh()
+g_animator = ModelLoader()
 
 g_screen_width, g_screen_height = 800, 800
 
@@ -25,7 +27,7 @@ g_vertex_shader_src = '''
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_color; 
+layout (location = 1) in vec3 vin_normal; 
 
 out vec4 vout_color;
 
@@ -99,7 +101,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame, g_mesh
+    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame, g_mesh, g_animator
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     elif key == GLFW_KEY_V and action == GLFW_PRESS:
@@ -120,6 +122,8 @@ def key_callback(window, key, scancode, action, mods):
     
     elif key == GLFW_KEY_H and action == GLFW_PRESS:
         g_mesh.change_animating_mode(not g_mesh.is_animating)
+        if(g_mesh.is_animating):
+            g_animator.prepare_animating()
 
 
 def framebuffer_size_callback(window, width, height):
@@ -183,7 +187,7 @@ def drop_callback(window, filepath):
     global g_mesh
 
     g_mesh.change_animating_mode(False)
-    g_mesh.parse_obj_str(filepath)
+    g_mesh.parse_obj_str(filepath[0])
     g_mesh.prepare_vao_mesh()
 
 def prepare_vao_grid():
@@ -231,18 +235,12 @@ def prepare_vao_obj(vertices):
 
     return VAO
 
-def draw_grid(vao, MVP, MVP_loc):
+def draw_grid(vao):
     glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
 
-def draw_obj(vao, MVP, MVP_loc, length):
-    glBindVertexArray(vao)    
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
-
 def main():
-    global g_P, g_cam, g_show_frame, g_mesh
+    global g_P, g_cam, g_show_frame, g_mesh, g_animator
 
     # initialize glfw
     if not glfwInit():
@@ -279,11 +277,14 @@ def main():
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
 
+    # animation loader
+
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
+        glClearColor(0.5, 0.5, 0.5, 1.0)
 
         # render in "wireframe mode"
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -292,14 +293,21 @@ def main():
 
         M = glm.mat4()
         V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
-        
+        P = g_P
+
+        MVP = g_P * V * M
+
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+
         # draw grid
-        draw_grid(vao_grid, g_P*V*M, MVP_loc)
+        draw_grid(vao_grid)
         
         # draw obj file
         if g_mesh.vao is not None and not g_mesh.is_animating:
             g_mesh.draw_mesh(g_P*V*M, MVP_loc)
-
+        elif g_mesh.is_animating:
+            g_animator.draw_hierarchical(MVP, MVP_loc)
+                
         # swap front and back buffers
         glfwSwapBuffers(window)
 
