@@ -20,6 +20,7 @@ class ModelLoader:
             "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\sphere-tri-quad.obj",
             "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\cube-tri-quad.obj",
             "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\cube-tri.obj",
+            ".\\project2\\animating-models\\zubat.obj"
         ]
 
         self.__animating_nodes = {}
@@ -40,18 +41,20 @@ class ModelLoader:
         while 문 밖에서 일어나는 모든 일을 처리한다.
         vao 세팅, base 세팅 등.
         '''
-        base = Node(None, glm.vec3(1., 1., 1.), glm.vec3(1., 1., 1.))
+        base = Node(None, glm.vec3(0.7, 0.7, 0.7), glm.vec3(1., 1., 1.))
         circle_1 = Node(base, glm.vec3(0.5, 0.5, 0.5), glm.vec3(1., 0.5, 0.5))
-        circle_2 = Node(base, glm.vec3(0.2, 0.2, 0.2), glm.vec3(1., 0.5, 0.5))
+        circle_2 = Node(base, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 0.5, 0.5))
 
-        cube_1 = Node(circle_1, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 0.5, 0.5))
+        cube_1 = Node(circle_1, glm.vec3(0.2, 0.3, 0.4), glm.vec3(1., 0.5, 0.5))
         cube_2 = Node(circle_2, glm.vec3(0.6, 0.6, 0.6), glm.vec3(1., 0.5, 0.5))
+        jubat = Node(circle_1, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 0.5, 0.5))
 
         self.__animating_nodes['base'] = base
         self.__animating_nodes['circle1'] = circle_1
         self.__animating_nodes['circle2'] = circle_2
         self.__animating_nodes['cube1'] = cube_1
         self.__animating_nodes['cube2'] = cube_2
+        self.__animating_nodes['jubat'] = jubat
 
         for file in self.__animating_files:
             mesh = Mesh()
@@ -67,9 +70,10 @@ class ModelLoader:
             
         base.set_transform(glm.translate(glm.vec3(glm.sin(t),0,0)))
         self.__animating_nodes.get('circle1').set_transform(glm.rotate(t, glm.vec3(0,0,1)) * glm.translate(glm.vec3(.5, 0, .01)))
-        self.__animating_nodes.get('circle2').set_transform(glm.translate(glm.vec3(2.0, 2.0, -0.2)) * glm.rotate(t, glm.vec3(0,1,0)))
+        self.__animating_nodes.get('circle2').set_transform(glm.translate(glm.vec3(-2.0, 2.0, -0.2)) * glm.rotate(2*t, glm.vec3(0,1,0)))
         self.__animating_nodes.get('cube1').set_transform(glm.translate(glm.vec3(glm.sin(t),0,0)))
-        self.__animating_nodes.get('cube2').set_transform(glm.translate(glm.vec3(glm.sin(t),0,0)))
+        self.__animating_nodes.get('cube2').set_transform(glm.rotate(t, glm.vec3(0,0,1)))
+        self.__animating_nodes.get('jubat').set_transform(glm.rotate(-t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(1.0, 1.5, 0.5)))
 
         base.update_tree_global_transform()
 
@@ -81,6 +85,7 @@ class ModelLoader:
         self.__meshes[2].draw_node(self.__animating_nodes.get('circle2'), MVP, MVP_loc)
         self.__meshes[3].draw_node(self.__animating_nodes.get('cube1'), MVP, MVP_loc)
         self.__meshes[4].draw_node(self.__animating_nodes.get('cube2'), MVP, MVP_loc)
+        self.__meshes[5].draw_node(self.__animating_nodes.get('jubat'), MVP, MVP_loc)
 
 
 
