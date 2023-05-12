@@ -19,7 +19,7 @@ mouse_pressed = {'left': False, 'right': False}
 g_P = glm.mat4()
 
 # show frame
-g_show_frame = True
+g_show_frame = False
 
 g_vertex_shader_src = '''
 #version 330 core
@@ -99,7 +99,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame
+    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame, g_mesh
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     elif key == GLFW_KEY_V and action == GLFW_PRESS:
@@ -114,8 +114,13 @@ def key_callback(window, key, scancode, action, mods):
             far = 20.0
             aspect_ratio = g_screen_width/g_screen_height
             g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
+    
     elif key == GLFW_KEY_F and action == GLFW_PRESS:
         g_show_frame = not g_show_frame
+    
+    elif key == GLFW_KEY_H and action == GLFW_PRESS:
+        g_mesh.change_animating_mode(not g_mesh.is_animating)
+
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_cam, g_screen_width, g_screen_height
@@ -177,6 +182,7 @@ def scroll_callback(window, x_scroll, y_scroll):
 def drop_callback(window, filepath):
     global g_mesh
 
+    g_mesh.change_animating_mode(False)
     g_mesh.parse_obj_str(filepath)
     g_mesh.prepare_vao_mesh()
 
@@ -334,7 +340,7 @@ def main():
             draw_frame(vao_frame, g_P*V*M, MVP_loc)
         
         # draw obj file
-        if g_mesh.vao is not None:
+        if g_mesh.vao is not None and not g_mesh.is_animating:
             g_mesh.draw_mesh(g_P*V*M, MVP_loc)
 
         # swap front and back buffers

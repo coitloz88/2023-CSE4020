@@ -15,6 +15,8 @@ import numpy as np
     
 class Mesh:
     def __init__(self):
+        self.__is_animating = False
+
         self.__filepath = ""
         self.__vertices = []
         self.__vnormals = []
@@ -26,8 +28,17 @@ class Mesh:
     @property
     def vao(self):
         return self.__vao
+    
+    @property
+    def is_animating(self):
+        return self.__is_animating
+    
+    def change_animating_mode(self, flag):
+        self.__is_animating = flag
 
     def parse_obj_str(self, filepath):
+        faces_cnt = {}
+
         with open(filepath[0], 'r') as f:
             lines = f.readlines()
 
@@ -54,14 +65,21 @@ class Mesh:
                     tmp_vnormals.append(vnormal)
                 
                 # 'f': parse the face data
+                # TODO: parse 4 or more face data line
                 elif words[0] == 'f':
-                    face_vertex_indices.append(int(words[1].split('//')[0]) - 1)
-                    face_vertex_indices.append(int(words[2].split('//')[0]) - 1)
-                    face_vertex_indices.append(int(words[3].split('//')[0]) - 1)
+                    vertex_len = len(words) - 1
 
-                    face_vnormal_indices.append(int(words[1].split('//')[1]) - 1)
-                    face_vnormal_indices.append(int(words[2].split('//')[1]) - 1)
-                    face_vnormal_indices.append(int(words[3].split('//')[1]) - 1)
+                    # TODO: vertex_len을 key로 하는 dictionary에 face의 total number 저장
+
+                    for idx in range(vertex_len):
+                        parsed_face_data = words[idx + 1].split('//')
+                        face_vertex_indices.append(int(parsed_face_data[0]) - 1)
+                        face_vnormal_indices.append(int(parsed_face_data[1]) - 1)
+                    
+                    if faces_cnt.get(vertex_len) is None:
+                        faces_cnt[vertex_len] = 0
+
+                    faces_cnt[vertex_len] = faces_cnt[vertex_len] + 1
 
                 # ignore other input options, continue
                 else:
@@ -83,11 +101,23 @@ class Mesh:
                 out_vertices.append(vertex)
                 out_vnormals.append(normal)
 
-            self.__filepath = filepath
+            self.__filepath = filepath[0]
             self.__vertices = np.array(tmp_vertices, np.float32)
             self.__vnormals = np.array(tmp_vnormals, np.float32)
             self.__vertex_indices = np.array(face_vertex_indices, np.uint32)
             self.__vnormal_indices = np.array(face_vnormal_indices, np.uint32)
+
+        total_faces_cnt = sum(faces_cnt.values())
+        faces_3 = int(faces_cnt.get(3) or 0)
+        faces_4 = int(faces_cnt.get(4) or 0)
+
+        print("------------------------")
+        print('obj file name: ' + self.__filepath.split('\\')[-1])
+        print('total number of faces: ' + str(total_faces_cnt)) # TODO: total number of 'f'
+        print('number of faces with 3 vertices: ' + str(faces_3))
+        print('number of faces with 4 vertices: ' + str(faces_4))
+        print('number of faces with more than 4 vertices: ' + str(total_faces_cnt - faces_4 - faces_3))
+        print("------------------------")
 
         return {'vertices': out_vertices, 'normals': out_vnormals}
     
