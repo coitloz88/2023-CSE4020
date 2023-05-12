@@ -186,39 +186,6 @@ def drop_callback(window, filepath):
     g_mesh.parse_obj_str(filepath)
     g_mesh.prepare_vao_mesh()
 
-def prepare_vao_frame():
-    # prepare vertex data (in main memory)
-    vertices = glm.array(glm.float32,
-        # position        # color
-         0.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis start
-         10, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
-         0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # y-axis start
-         0.0, 10, 0.0,  0.0, 1.0, 0.0, # y-axis end 
-         0.0, 0.0, 0.0,  0.0, 0.0, 1.0, # z-axis start
-         0.0, 0.0, 10,  0.0, 0.0, 1.0, # z-axis end 
-    )
-
-    # create and activate VAO (vertex array object)
-    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    # configure vertex colors
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
-
-    return VAO
-
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
 
@@ -264,11 +231,6 @@ def prepare_vao_obj(vertices):
 
     return VAO
 
-def draw_frame(vao, MVP, MVP_loc):
-    glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    glDrawArrays(GL_LINES, 0, 6)
-
 def draw_grid(vao, MVP, MVP_loc):
     glBindVertexArray(vao)
     glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
@@ -312,7 +274,6 @@ def main():
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
 
     # prepare vao
-    vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
 
     # initialize projection matrix
@@ -334,10 +295,6 @@ def main():
         
         # draw grid
         draw_grid(vao_grid, g_P*V*M, MVP_loc)
-
-        # draw world frame
-        if g_show_frame:
-            draw_frame(vao_frame, g_P*V*M, MVP_loc)
         
         # draw obj file
         if g_mesh.vao is not None and not g_mesh.is_animating:
