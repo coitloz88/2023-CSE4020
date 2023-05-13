@@ -50,6 +50,8 @@ class Mesh:
 
             for line in lines:
                 words = line.split()
+                if len(words) < 1:
+                    continue
 
                 # 'v': parse the vertex data
                 if words[0] == 'v':
@@ -77,7 +79,7 @@ class Mesh:
                         # +1을 하는 이유: 0번째 요소는 'f'이기 때문
                         parsed_face_data = words[1].split('/')
                         # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
-                        # array에는 0부터 접근가능하기 때문              
+                        # array에는 0부터 접근가능하기 때문
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
                         face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
@@ -85,7 +87,7 @@ class Mesh:
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1)
                         face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                        parsed_face_data = words[i + 2].split('/')                            
+                        parsed_face_data = words[i + 2].split('/')
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1)
                         face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
