@@ -12,7 +12,6 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
-    
 class Mesh:
     def __init__(self):
         self.__is_animating = False
@@ -47,41 +46,48 @@ class Mesh:
             
             face_vertex_indices = []
             face_vnormal_indices = []
+            avg_vnormal_per_vertex = []
 
             for line in lines:
                 words = line.split()
 
                 # 'v': parse the vertex data
                 if words[0] == 'v':
-                    # TODO: color 파싱
-                    vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
+                    avg_vnormal_per_vertex.append([0,0,0])
+                    vertex = [float(words[1]), float(words[2]), float(words[3])]
                     tmp_vertices.append(vertex)
+
+                    if(len(words) == 7):
+                        color = [float(words[4]), float(words[5]), float(words[6])]
+                        tmp_vertices.append(color)
+                    else:
+                        tmp_vertices.append([1., 1., 1.])
                 
                 # 'vn': parse the vertex normal vector data
                 elif words[0] == 'vn':
-                    vnormal = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
+                    vnormal = [float(words[1]), float(words[2]), float(words[3])]
                     tmp_vnormals.append(vnormal)
                 
                 # 'f': parse the face data
                 elif words[0] == 'f':
                     vertex_len = len(words) - 1
                     for i in range(1, vertex_len - 1):
-                            # 삼각형 하나의 index가 i, j, k로 결정됨
+                        # 삼각형 하나의 index가 i, j, k로 결정됨
 
-                            # +1을 하는 이유: 0번째 요소는 'f'이기 때문
-                            parsed_face_data = words[1].split('/')
-                            # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
-                            # array에는 0부터 접근가능하기 때문              
-                            face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
-                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        # +1을 하는 이유: 0번째 요소는 'f'이기 때문
+                        parsed_face_data = words[1].split('/')
+                        # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
+                        # array에는 0부터 접근가능하기 때문              
+                        face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
+                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                            parsed_face_data = words[i + 1].split('/')                            
-                            face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        parsed_face_data = words[i + 1].split('/')                            
+                        face_vertex_indices.append(int(parsed_face_data[0]) - 1)
+                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
-                            parsed_face_data = words[i + 2].split('/')                            
-                            face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        parsed_face_data = words[i + 2].split('/')                            
+                        face_vertex_indices.append(int(parsed_face_data[0]) - 1)
+                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
 
                     if faces_cnt.get(vertex_len) is None:
                         faces_cnt[vertex_len] = 0
@@ -91,12 +97,32 @@ class Mesh:
                 # ignore other input options, continue
                 else:
                     continue
+            
+            used_vertices_len = len(face_vertex_indices)
+            for idx in range(used_vertices_len):
+                avn = avg_vnormal_per_vertex[face_vertex_indices[idx]]
+                vn = tmp_vnormals[face_vnormal_indices[idx]]
+
+                for i in range(3):
+                    avn[i] += vn[i]
+            
+            avg_vn_len = len(avg_vnormal_per_vertex)
+            for idx in range(avg_vn_len):
+                avn = avg_vnormal_per_vertex[idx]
+                avg_vnormal_per_vertex[idx] = avn / np.linalg.norm(np.array(avn, dtype="f4"))
+
+            tmp_vertices_with_nv = []
+            for idx in range(avg_vn_len):
+                tmp_vertices_with_nv.append(tmp_vertices[2 * idx])
+                tmp_vertices_with_nv.append(tmp_vertices[2 * idx + 1])
+                tmp_vertices_with_nv.append(avg_vnormal_per_vertex[idx])
+                # avg_vnormal은 np.array라서 형변환이 안됨
 
             self.__filepath = filepath
-            self.__vertices = np.array(tmp_vertices, np.float32)
-            self.__vnormals = np.array(tmp_vnormals, np.float32)
-            self.__vertex_indices = np.array(face_vertex_indices, np.uint32)
-            self.__vnormal_indices = np.array(face_vnormal_indices, np.uint32)
+            self.__vertices = np.concatenate(np.array(tmp_vertices_with_nv, dtype='f4'))
+            self.__vnormals = np.array(tmp_vnormals, dtype='f4')
+            self.__vertex_indices = np.array(face_vertex_indices, dtype='u4')
+            self.__vnormal_indices = np.array(face_vnormal_indices, dtype='u4')
 
         total_faces_cnt = sum(faces_cnt.values())
         faces_3 = int(faces_cnt.get(3) or 0)
@@ -112,8 +138,8 @@ class Mesh:
     
     def prepare_vao_mesh(self):
         vertices = glm.array(self.__vertices)
-        indices = glm.array(self.__vertex_indices)
-
+        vertex_indices = glm.array(self.__vertex_indices)
+        
         # create and activate VAO (vertex array object)
         VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
         glBindVertexArray(VAO)      # activate VAO
@@ -130,26 +156,20 @@ class Mesh:
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
 
         # copy index data to EBO
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound index buffer
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.nbytes, vertex_indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound index buffer
 
         # configure vertex positions
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), None)
         glEnableVertexAttribArray(0)
 
-        # normals = glm.array(self.__vnormals)
-        # # normal_indices = glm.array(self.__vnormal_indices)
+        # configure vertex color
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(1)
 
-        # VBO_normal = glGenBuffers(1)
-        # glBindBuffer(GL_ARRAY_BUFFER, VBO_normal)
+        # configure vertex normal
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(2)
 
-        # # EBO_normal = glGenBuffers(1)
-        # # glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO_normal)
-
-        # glBufferData(GL_ARRAY_BUFFER, normals.nbytes, normals.ptr, GL_STATIC_DRAW)
-        # # glBufferData(GL_ELEMENT_ARRAY_BUFFER, normal_indices.nbytes, normal_indices.ptr, GL_STATIC_DRAW)
-
-        # glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
-        # glEnableVertexAttribArray(1)
         self.__vao = VAO
 
         return VAO

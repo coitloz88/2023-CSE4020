@@ -26,12 +26,16 @@ g_show_frame = False
 g_vertex_shader_src = '''
 #version 330 core
 
-layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_normal; 
+layout (location = 0) in vec3 vin_pos;
+layout (location = 1) in vec3 vin_material_color;
+layout (location = 2) in vec3 vin_normal; 
 
-out vec4 vout_color;
+out vec3 vout_surface_pos;
+out vec3 vout_material_color;
+out vec3 vout_normal;
 
 uniform mat4 MVP;
+uniform mat4 M;
 
 void main()
 {
@@ -40,20 +44,72 @@ void main()
 
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_color = vec4(1., 1., 1., 1.); //TODO: vin_color로 수정
+    vout_surface_pos = vec3(M * vec4(vin_pos, 1));
+    vout_material_color = vin_material_color;
+
+    if(vin_normal.x == 0 && vin_normal.y == 0 && vin_normal.z == 0) {
+        vout_normal = vec3(0,0,0);
+    } else {
+        vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
+    }
 }
 '''
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec3 vout_surface_pos;
+in vec3 vout_material_color;
+in vec3 vout_normal;
 
 out vec4 FragColor;
 
+uniform vec3 view_pos;
+
 void main()
 {
-    FragColor = vout_color;
+    if(vout_normal.x == 0 && vout_normal.y == 0 && vout_normal.z == 0) {
+        FragColor = vec4(vout_material_color, 1.);
+    }
+
+    else {
+        // light and material properties
+        vec3 light_pos = vec3(10, 12, -10);
+        vec3 light_color = vec3(1,1,1);
+        vec3 material_color = vout_material_color;
+        float material_shininess = 32.0;
+
+        // light components
+        vec3 light_ambient = 0.1*light_color;
+        vec3 light_diffuse = light_color;
+        vec3 light_specular = light_color;
+
+        // material components
+        vec3 material_ambient = material_color;
+        vec3 material_diffuse = material_color;
+        vec3 material_specular = light_color;  // for non-metal material
+
+        // ambient
+        vec3 ambient = light_ambient * material_ambient;
+
+        // for diffiuse and specular
+        vec3 normal = normalize(vout_normal);
+        vec3 surface_pos = vout_surface_pos;
+        vec3 light_dir = normalize(light_pos - surface_pos);
+
+        // diffuse
+        float diff = max(dot(normal, light_dir), 0);
+        vec3 diffuse = diff * light_diffuse * material_diffuse;
+
+        // specular
+        vec3 view_dir = normalize(view_pos - surface_pos);
+        vec3 reflect_dir = reflect(-light_dir, normal);
+        float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
+        vec3 specular = spec * light_specular * material_specular;
+
+        vec3 color = ambient + diffuse + specular;
+        FragColor = vec4(color, 1.); //TODO: change to (color, 1.)
+    }
 }
 '''
 
@@ -196,7 +252,11 @@ def prepare_vao_grid():
     # prepare vertex data (in main memory)
 
     vertices = glm.array(glm.float32,
-    -1.0, 0, -1, 1, 1, 1, -1.0, 0, 1, 1, 1, 1, -0.9, 0, -1, 1, 1, 1, -0.9, 0, 1, 1, 1, 1, -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
+        -1.0, 0, -1, 1, 1, 1,
+        -1.0, 0, 1, 1, 1, 1, 
+        -0.9, 0, -1, 1, 1, 1, 
+        -0.9, 0, 1, 1, 1, 1, 
+        -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
     )
 
     # create and activate VAO (vertex array object)
@@ -220,21 +280,67 @@ def prepare_vao_grid():
 
     return VAO
 
-def prepare_vao_obj(vertices):
-    VAO = glGenVertexArrays(1)
+def prepare_vao_cube():
+    # prepare vertex data (in main memory)
+    # 8 vertices
+    vertices = glm.array(glm.float32,
+        # position     color  normal
+        -1 ,  1 ,  1 , 1,1,0,-0.577 ,  0.577,  0.577, # v0
+         1 ,  1 ,  1 , 1,1,0, 0.816 ,  0.408,  0.408, # v1
+         1 , -1 ,  1 , 1,1,0, 0.408 , -0.408,  0.816, # v2
+        -1 , -1 ,  1 , 0,1,1,-0.408 , -0.816,  0.408, # v3
+        -1 ,  1 , -1 , 0,1,1,-0.408 ,  0.408, -0.816, # v4
+         1 ,  1 , -1 , 0,1,1, 0.408 ,  0.816, -0.408, # v5
+         1 , -1 , -1 , 0,1,1, 0.577 , -0.577, -0.577, # v6
+        -1 , -1 , -1 , 0,1,0,-0.816 , -0.408, -0.408, # v7
+    )
+
+    # prepare index data
+    # 12 triangles
+    indices = glm.array(glm.uint32,
+        0,2,1,
+        0,3,2,
+        4,5,6,
+        4,6,7,
+        0,1,5,
+        0,5,4,
+        3,6,2,
+        3,7,6,
+        1,2,6,
+        1,6,5,
+        0,7,3,
+        0,4,7,
+    )
+
+    # create and activate VAO (vertex array object)
+    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
     glBindVertexArray(VAO)      # activate VAO
 
     # create and activate VBO (vertex buffer object)
     VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
     glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
 
+    # create and activate EBO (element buffer object)
+    EBO = glGenBuffers(1)   # create a buffer object ID and store it to EBO variable
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)  # activate EBO as an element buffer object
+
     # copy vertex data to VBO
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
 
+    # copy index data to EBO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound element buffer
+
     # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
 
+    # configure vertex color
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    glEnableVertexAttribArray(1)
+
+    # configure vertex normal
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+    glEnableVertexAttribArray(2)
     return VAO
 
 def draw_grid(vao):
@@ -272,9 +378,12 @@ def main():
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
+    M_loc = glGetUniformLocation(shader_program, 'M')
+    view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
 
     # prepare vao
     vao_grid = prepare_vao_grid()
+    vao_cube = prepare_vao_cube()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
@@ -286,7 +395,7 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-        # glClearColor(0.5, 0.5, 0.5, 1.0)
+        glClearColor(0.5, 0.5, 0.5, 1.0)
         
         # render mode
         if g_animator.is_fill:
@@ -298,21 +407,22 @@ def main():
 
         M = glm.mat4()
         V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
-        P = g_P
 
         MVP = g_P * V * M
 
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
+        glUniform3f(view_pos_loc, g_cam.pos.x, g_cam.pos.y, g_cam.pos.z)
+        
         # draw grid
         draw_grid(vao_grid)
-        
+
         # draw obj file
         if g_mesh.vao is not None and not g_animator.is_animating:
             g_mesh.draw_mesh(g_P*V*M, MVP_loc)
         elif g_animator.is_animating:
             g_animator.draw_hierarchical(MVP, MVP_loc)
-                
+        
         # swap front and back buffers
         glfwSwapBuffers(window)
 
