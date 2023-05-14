@@ -15,15 +15,16 @@ class ModelLoader:
         self.__meshes = []
 
         self.__animating_files = [
-            "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\animating-models\\pikachu.obj",
-            "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\cylinder-tri.obj", 
-            "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\sphere-tri-quad.obj",
-            "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\cube-tri-quad.obj",
-            "C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\Project2-sample-objs\\cube-tri.obj",
-            ".\\project2\\animating-models\\zubat.obj"
+            ".\\project2\\animating-models\\pikachu.obj",            
+            ".\\project2\\animating-models\\zubat.obj",
+            ".\\project2\\animating-models\\diglett.obj",
+            ".\\project2\\animating-models\\pokeball.obj",
+            ".\\project2\\animating-models\\pokeball.obj",
+            ".\\project2\\animating-models\\pokeball.obj",
+            ".\\project2\\animating-models\\pokeball.obj",
         ]
 
-        self.__animating_nodes = {}
+        self.__animating_nodes = []
 
     @property
     def is_animating(self):
@@ -44,20 +45,22 @@ class ModelLoader:
         while 문 밖에서 일어나는 모든 일을 처리한다.
         vao 세팅, base 세팅 등.
         '''
-        base = Node(None, glm.vec3(0.7, 0.7, 0.7), glm.vec3(1., 1., 1.))
-        circle_1 = Node(base, glm.vec3(0.5, 0.5, 0.5), glm.vec3(1., 0.5, 0.5))
-        circle_2 = Node(base, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 0.5, 0.5))
+        base = Node(None, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 1., 1.))
+        child1 = Node(base, glm.vec3(0.2, 0.2, 0.2), glm.vec3(1., 0.5, 0.5))
+        child2 = Node(base, glm.vec3(0.2, 0.2, 0.2), glm.vec3(1., 0.5, 0.5))
 
-        cube_1 = Node(circle_1, glm.vec3(0.2, 0.3, 0.4), glm.vec3(1., 0.5, 0.5))
-        cube_2 = Node(circle_2, glm.vec3(0.6, 0.6, 0.6), glm.vec3(1., 0.5, 0.5))
-        jubat = Node(circle_1, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 0.5, 0.5))
+        child1_1 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
+        child1_2 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
+        child2_1 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
+        child2_2 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
 
-        self.__animating_nodes['base'] = base
-        self.__animating_nodes['circle1'] = circle_1
-        self.__animating_nodes['circle2'] = circle_2
-        self.__animating_nodes['cube1'] = cube_1
-        self.__animating_nodes['cube2'] = cube_2
-        self.__animating_nodes['jubat'] = jubat
+        self.__animating_nodes.append(base)
+        self.__animating_nodes.append(child1)
+        self.__animating_nodes.append(child2)
+        self.__animating_nodes.append(child1_1)
+        self.__animating_nodes.append(child1_2)
+        self.__animating_nodes.append(child2_1)
+        self.__animating_nodes.append(child2_2)
 
         for file in self.__animating_files:
             mesh = Mesh()
@@ -67,28 +70,25 @@ class ModelLoader:
 
         return self.__animating_nodes
         
-    def draw_hierarchical(self, MVP, MVP_loc):
+    def draw_hierarchical(self, MVP, MVP_loc,):
         t = glfwGetTime()
-        base = self.__animating_nodes.get('base')
-            
-        base.set_transform(glm.translate(glm.vec3(glm.sin(t),0,0)))
-        self.__animating_nodes.get('circle1').set_transform(glm.rotate(t, glm.vec3(0,0,1)) * glm.translate(glm.vec3(.5, 0, .01)))
-        self.__animating_nodes.get('circle2').set_transform(glm.translate(glm.vec3(-2.0, 2.0, -0.2)) * glm.rotate(2*t, glm.vec3(0,1,0)))
-        self.__animating_nodes.get('cube1').set_transform(glm.translate(glm.vec3(glm.sin(t),0,0)))
-        self.__animating_nodes.get('cube2').set_transform(glm.rotate(t, glm.vec3(0,0,1)))
-        self.__animating_nodes.get('jubat').set_transform(glm.rotate(-t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(1.0, 1.5, 0.5)))
 
-        base.update_tree_global_transform()
+        self.__animating_nodes[0].set_transform(glm.translate(glm.vec3(0.15 * glm.sin(t), -0.04, 0)))
+        self.__animating_nodes[1].set_transform(glm.rotate(t, glm.vec3(0, 1, 0)) * glm.translate(glm.vec3(0, 1.0 + 0.05 * glm.sin(t), -2.5)))
+        self.__animating_nodes[2].set_transform(glm.translate(glm.vec3(1.5 * glm.cos(t), 0.01, 1.5)))
+        self.__animating_nodes[3].set_transform(glm.rotate(t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(0.55, 0.7 + 0.5 * glm.sin(t), 0.55)))
+        self.__animating_nodes[4].set_transform(glm.rotate(t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(-0.55, 0.7 + 0.5 * glm.cos(t), -0.55)))
+        self.__animating_nodes[5].set_transform(glm.rotate(t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(0.5, 0.5 + 0.25 * glm.sin(t), -0.5)))
+        self.__animating_nodes[6].set_transform(glm.rotate(t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(-0.5, 0.5 + 0.25 * glm.cos(t), 0.5)))
+
+        self.__animating_nodes[0].update_tree_global_transform()
 
         self.draw_nodes(MVP, MVP_loc)
 
     def draw_nodes(self, MVP, MVP_loc):        
-        self.__meshes[0].draw_node(self.__animating_nodes.get('base'), MVP, MVP_loc)
-        self.__meshes[1].draw_node(self.__animating_nodes.get('circle1'), MVP, MVP_loc)
-        self.__meshes[2].draw_node(self.__animating_nodes.get('circle2'), MVP, MVP_loc)
-        self.__meshes[3].draw_node(self.__animating_nodes.get('cube1'), MVP, MVP_loc)
-        self.__meshes[4].draw_node(self.__animating_nodes.get('cube2'), MVP, MVP_loc)
-        self.__meshes[5].draw_node(self.__animating_nodes.get('jubat'), MVP, MVP_loc)
+        nodes_cnt = len(self.__meshes)
+        for idx in range(nodes_cnt):
+            self.__meshes[idx].draw_node(self.__animating_nodes[idx], MVP, MVP_loc)
 
 
 

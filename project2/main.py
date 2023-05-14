@@ -33,6 +33,7 @@ layout (location = 2) in vec3 vin_normal;
 out vec3 vout_surface_pos;
 out vec3 vout_material_color;
 out vec3 vout_normal;
+out vec3 vout_light_pos;
 
 uniform mat4 MVP;
 uniform mat4 M;
@@ -52,6 +53,7 @@ void main()
     } else {
         vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
     }
+    vout_light_pos = vec3(MVP * vec4(vec3(15, 15, -10), 1));
 }
 '''
 
@@ -61,6 +63,7 @@ g_fragment_shader_src = '''
 in vec3 vout_surface_pos;
 in vec3 vout_material_color;
 in vec3 vout_normal;
+in vec3 vout_light_pos;
 
 out vec4 FragColor;
 
@@ -395,7 +398,7 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-        glClearColor(0.5, 0.5, 0.5, 1.0)
+        # glClearColor(0.5, 0.5, 0.5, 1.0)
         
         # render mode
         if g_animator.is_fill:
