@@ -159,8 +159,10 @@ class Mesh:
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
         glDrawArrays(GL_TRIANGLES, 0, len(self.__vertex_indices))
             
-    def draw_node(self, node, VP, MVP_loc):
-        MVP = VP * node.get_global_transform() * glm.scale(node.get_scale())
+    def draw_node(self, node, VP, MVP_loc, M_loc):
+        M = node.get_global_transform() * glm.scale(node.get_scale())
+        MVP = VP * M
         glBindVertexArray(self.__vao)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
         glDrawArrays(GL_TRIANGLES, 0, len(self.__vertex_indices))

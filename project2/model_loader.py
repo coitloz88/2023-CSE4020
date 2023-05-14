@@ -70,7 +70,7 @@ class ModelLoader:
 
         return self.__animating_nodes
         
-    def draw_hierarchical(self, MVP, MVP_loc,):
+    def draw_hierarchical(self, MVP, MVP_loc, M_loc):
         t = glfwGetTime()
 
         self.__animating_nodes[0].set_transform(glm.translate(glm.vec3(0.15 * glm.sin(t), -0.04, 0)))
@@ -83,12 +83,12 @@ class ModelLoader:
 
         self.__animating_nodes[0].update_tree_global_transform()
 
-        self.draw_nodes(MVP, MVP_loc)
+        self.draw_nodes(MVP, MVP_loc, M_loc)
 
-    def draw_nodes(self, MVP, MVP_loc):        
+    def draw_nodes(self, MVP, MVP_loc, M_loc):        
         nodes_cnt = len(self.__meshes)
         for idx in range(nodes_cnt):
-            self.__meshes[idx].draw_node(self.__animating_nodes[idx], MVP, MVP_loc)
+            self.__meshes[idx].draw_node(self.__animating_nodes[idx], MVP, MVP_loc, M_loc)
 
 
 

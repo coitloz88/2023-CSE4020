@@ -357,7 +357,7 @@ def main():
         if g_mesh.vao is not None and not g_animator.is_animating:
             g_mesh.draw_mesh(g_P*V*M, MVP_loc)
         elif g_animator.is_animating:
-            g_animator.draw_hierarchical(MVP, MVP_loc)
+            g_animator.draw_hierarchical(MVP, MVP_loc, M_loc)
         
         # swap front and back buffers
         glfwSwapBuffers(window)
