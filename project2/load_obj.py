@@ -41,12 +41,12 @@ class Mesh:
         with open(filepath, 'r') as f:
             lines = f.readlines()
 
-            tmp_vertices = []
+            tmp_vertex_pos = []
+            tmp_vertex_colors = []
             tmp_vnormals = []
             
             face_vertex_indices = []
             face_vnormal_indices = []
-            avg_vnormal_per_vertex = []
 
             for line in lines:
                 words = line.split()
@@ -55,15 +55,14 @@ class Mesh:
 
                 # 'v': parse the vertex data
                 if words[0] == 'v':
-                    avg_vnormal_per_vertex.append([0,0,0])
                     vertex = [float(words[1]), float(words[2]), float(words[3])]
-                    tmp_vertices.append(vertex)
+                    tmp_vertex_pos.append(vertex)
 
                     if(len(words) == 7):
                         color = [float(words[4]), float(words[5]), float(words[6])]
-                        tmp_vertices.append(color)
+                        tmp_vertex_colors.append(color)
                     else:
-                        tmp_vertices.append([1., 1., 1.])
+                        tmp_vertex_colors.append([1., 1., 1.])
                 
                 # 'vn': parse the vertex normal vector data
                 elif words[0] == 'vn':
@@ -100,28 +99,15 @@ class Mesh:
                 else:
                     continue
             
+            vbo_arr_data = []
             used_vertices_len = len(face_vertex_indices)
             for idx in range(used_vertices_len):
-                avn = avg_vnormal_per_vertex[face_vertex_indices[idx]]
-                vn = tmp_vnormals[face_vnormal_indices[idx]]
-
-                for i in range(3):
-                    avn[i] += vn[i]
-            
-            avg_vn_len = len(avg_vnormal_per_vertex)
-            for idx in range(avg_vn_len):
-                avn = avg_vnormal_per_vertex[idx]
-                avg_vnormal_per_vertex[idx] = avn / np.linalg.norm(np.array(avn, dtype="f4"))
-
-            tmp_vertices_with_nv = []
-            for idx in range(avg_vn_len):
-                tmp_vertices_with_nv.append(tmp_vertices[2 * idx])
-                tmp_vertices_with_nv.append(tmp_vertices[2 * idx + 1])
-                tmp_vertices_with_nv.append(avg_vnormal_per_vertex[idx])
-                # avg_vnormal은 np.array라서 형변환이 안됨
+                vbo_arr_data.append(tmp_vertex_pos[face_vertex_indices[idx]])
+                vbo_arr_data.append(tmp_vertex_colors[face_vertex_indices[idx]])
+                vbo_arr_data.append(tmp_vnormals[face_vnormal_indices[idx]])
 
             self.__filepath = filepath
-            self.__vertices = np.concatenate(np.array(tmp_vertices_with_nv, dtype='f4'))
+            self.__vertices = np.concatenate(np.array(vbo_arr_data, dtype='f4'))
             self.__vnormals = np.array(tmp_vnormals, dtype='f4')
             self.__vertex_indices = np.array(face_vertex_indices, dtype='u4')
             self.__vnormal_indices = np.array(face_vnormal_indices, dtype='u4')
@@ -140,25 +126,17 @@ class Mesh:
     
     def prepare_vao_mesh(self):
         vertices = glm.array(self.__vertices)
-        vertex_indices = glm.array(self.__vertex_indices)
         
         # create and activate VAO (vertex array object)
         VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
         glBindVertexArray(VAO)      # activate VAO
 
         # create and activate VBO (vertex buffer object)
-        VBO_vertex = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_vertex)  # activate VBO as a vertex buffer object
-
-        # create and activate EBO (element buffer object)
-        EBO_vertex = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO_vertex)  # activate VBO as a vertex buffer object
+        VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+        glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
 
         # copy vertex data to VBO
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-        # copy index data to EBO
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertex_indices.nbytes, vertex_indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound index buffer
 
         # configure vertex positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), None)
@@ -179,10 +157,10 @@ class Mesh:
     def draw_mesh(self, MVP, MVP_loc):
         glBindVertexArray(self.__vao)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-        glDrawElements(GL_TRIANGLES, len(self.__vertex_indices), GL_UNSIGNED_INT, None)
-    
+        glDrawArrays(GL_TRIANGLES, 0, len(self.__vertex_indices))
+            
     def draw_node(self, node, VP, MVP_loc):
         MVP = VP * node.get_global_transform() * glm.scale(node.get_scale())
         glBindVertexArray(self.__vao)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-        glDrawElements(GL_TRIANGLES, len(self.__vertex_indices), GL_UNSIGNED_INT, None)
+        glDrawArrays(GL_TRIANGLES, 0, len(self.__vertex_indices))
