@@ -67,7 +67,7 @@ class ModelLoader:
 
         for file in self.__animating_files:
             mesh = Mesh()
-            mesh.parse_obj_str(file)
+            mesh.parse_obj_str(file, False)
             mesh.prepare_vao_mesh()
             self.__meshes.append(mesh)
 
@@ -76,7 +76,7 @@ class ModelLoader:
     def draw_hierarchical(self, MVP, MVP_loc, M_loc):
         t = glfwGetTime()
 
-        self.__animating_nodes[0].set_transform(glm.translate(glm.vec3(0.15 * glm.sin(t), -0.04, 0)))
+        self.__animating_nodes[0].set_transform(glm.translate(glm.vec3(0.4 * glm.sin(t), -0.04, 0.4 * glm.cos(t))))
         self.__animating_nodes[1].set_transform(glm.rotate(t, glm.vec3(0, 1, 0)) * glm.translate(glm.vec3(0, 1.0 + 0.05 * glm.sin(t), -2.5)))
         self.__animating_nodes[2].set_transform(glm.translate(glm.vec3(1.5 * glm.cos(t), 0.01, 1.5)))
         self.__animating_nodes[3].set_transform(glm.rotate(t, glm.vec3(0,1,0)) * glm.translate(glm.vec3(0.55, 0.7 + 0.5 * glm.sin(t), 0.55)))

@@ -18,9 +18,7 @@ class Mesh:
 
         self.__filepath = ""
         self.__vertices = []
-        self.__vnormals = []
         self.__vertex_indices = []
-        self.__vnormal_indices = []
 
         self.__vao = None
 
@@ -35,7 +33,7 @@ class Mesh:
     def change_animating_mode(self, flag):
         self.__is_animating = flag
 
-    def parse_obj_str(self, filepath):
+    def parse_obj_str(self, filepath, show_face_cnt = True):
         faces_cnt = {}
 
         with open(filepath, 'r') as f:
@@ -108,21 +106,19 @@ class Mesh:
 
             self.__filepath = filepath
             self.__vertices = np.concatenate(np.array(vbo_arr_data, dtype='f4'))
-            self.__vnormals = np.array(tmp_vnormals, dtype='f4')
             self.__vertex_indices = np.array(face_vertex_indices, dtype='u4')
-            self.__vnormal_indices = np.array(face_vnormal_indices, dtype='u4')
 
         total_faces_cnt = sum(faces_cnt.values())
         faces_3 = int(faces_cnt.get(3) or 0)
         faces_4 = int(faces_cnt.get(4) or 0)
 
-        print("------------------------")
-        print('obj file name: ' + self.__filepath.split('\\')[-1])
-        print('total number of faces: ' + str(total_faces_cnt)) # TODO: total number of 'f'
-        print('number of faces with 3 vertices: ' + str(faces_3))
-        print('number of faces with 4 vertices: ' + str(faces_4))
-        print('number of faces with more than 4 vertices: ' + str(total_faces_cnt - faces_4 - faces_3))
-        print("------------------------")
+        if show_face_cnt:
+            print("------------------------")
+            print('obj file name: ' + self.__filepath.split('\\')[-1])
+            print('total number of faces: ' + str(total_faces_cnt)) # TODO: total number of 'f'
+            print('number of faces with 3 vertices: ' + str(faces_3))
+            print('number of faces with 4 vertices: ' + str(faces_4))
+            print('number of faces with more than 4 vertices: ' + str(total_faces_cnt - faces_4 - faces_3))
     
     def prepare_vao_mesh(self):
         vertices = glm.array(self.__vertices)
