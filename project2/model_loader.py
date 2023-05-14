@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 from node import Node
 from load_obj import Mesh
+import os
 
 class ModelLoader:
     def __init__(self):
@@ -14,14 +15,16 @@ class ModelLoader:
         self.__filepath = []
         self.__meshes = []
 
+        current_dir, file = os.path.split(os.path.abspath(__file__))
+
         self.__animating_files = [
-            ".\\project2\\animating-models\\pikachu.obj",            
-            ".\\project2\\animating-models\\zubat.obj",
-            ".\\project2\\animating-models\\diglett.obj",
-            ".\\project2\\animating-models\\pokeball.obj",
-            ".\\project2\\animating-models\\pokeball.obj",
-            ".\\project2\\animating-models\\pokeball.obj",
-            ".\\project2\\animating-models\\pokeball.obj",
+            os.path.join(current_dir, 'animating-models', 'pikachu.obj'),
+            os.path.join(current_dir, 'animating-models', 'zubat.obj'),
+            os.path.join(current_dir, 'animating-models', 'diglett.obj'),
+            os.path.join(current_dir, 'animating-models', 'pokeball.obj'),
+            os.path.join(current_dir, 'animating-models', 'pokeball.obj'),
+            os.path.join(current_dir, 'animating-models', 'pokeball.obj'),
+            os.path.join(current_dir, 'animating-models', 'pokeball.obj'),
         ]
 
         self.__animating_nodes = []

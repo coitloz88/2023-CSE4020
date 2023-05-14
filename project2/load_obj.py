@@ -12,6 +12,7 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
+import os
 class Mesh:
     def __init__(self):
         self.__is_animating = False
@@ -114,7 +115,7 @@ class Mesh:
 
         if show_face_cnt:
             print("------------------------")
-            print('obj file name: ' + self.__filepath.split('\\')[-1])
+            print('obj file name: ' + os.path.basename(self.__filepath))
             print('total number of faces: ' + str(total_faces_cnt)) # TODO: total number of 'f'
             print('number of faces with 3 vertices: ' + str(faces_3))
             print('number of faces with 4 vertices: ' + str(faces_4))

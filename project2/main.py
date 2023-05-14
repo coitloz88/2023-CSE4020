@@ -6,6 +6,7 @@ import numpy as np
 from camera import Camera as cam
 from load_obj import Mesh as mesh
 from model_loader import ModelLoader
+import os
 
 g_cam = cam()
 g_mesh = mesh()
@@ -115,7 +116,7 @@ void main()
     else {
         // light and material properties
         int light_cnt = 3;
-        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 50, 0), vec3(-8, 8, 8),};
+        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 20, 0), vec3(-16, 2, 20),};
         vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
 
         vec3 normal = normalize(vout_normal);    
@@ -265,7 +266,7 @@ def drop_callback(window, filepath):
     global g_meshg, g_animator
 
     g_animator.change_animating_mode(False)
-    g_mesh.parse_obj_str(filepath[0])
+    g_mesh.parse_obj_str(os.path.join(filepath[0]))
     g_mesh.prepare_vao_mesh()
 
 def prepare_vao_grid():
