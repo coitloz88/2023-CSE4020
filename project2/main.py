@@ -66,6 +66,46 @@ out vec4 FragColor;
 
 uniform vec3 view_pos;
 
+vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_pos, vec3 view_dir, vec3 material_color, float material_shininess){
+    float constant = 1.0f;
+    float linear = 0.015f;
+    float quadratic = 0.007f;
+    
+    // light components
+    vec3 light_ambient = 0.1 * light_color;
+    vec3 light_diffuse = light_color;
+    vec3 light_specular = light_color;
+    vec3 light_dir = normalize(light_pos - surface_pos);
+
+    // material components
+    vec3 material_ambient = material_color;
+    vec3 material_diffuse = material_color;
+    vec3 material_specular = light_color;  // for non-metal material
+    
+    // ambient
+    vec3 ambient = light_ambient * material_ambient;
+
+    // diffuse
+    float diff = max(dot(normal, light_dir), 0);
+    vec3 diffuse = diff * light_diffuse * material_diffuse;
+
+    // specular
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
+    vec3 specular = spec * light_specular * material_specular;
+
+    // attenuation
+    float distance = length(light_pos - surface_pos);
+    float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
+
+    // combine results
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
+
 void main()
 {
     if(vout_normal.x == 0 && vout_normal.y == 0 && vout_normal.z == 0) {
@@ -74,41 +114,19 @@ void main()
 
     else {
         // light and material properties
-        vec3 light_pos = vec3(3, 4, 3);
-        vec3 light_color = vec3(1,1,1);
-        vec3 material_color = vout_material_color;
-        float material_shininess = 32.0;
+        int light_cnt = 3;
+        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 50, 0), vec3(-8, 8, 8),};
+        vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
 
-        // light components
-        vec3 light_ambient = 0.1*light_color;
-        vec3 light_diffuse = light_color;
-        vec3 light_specular = light_color;
+        vec3 normal = normalize(vout_normal);    
+        vec3 view_dir = normalize(view_pos - vout_surface_pos);
+        vec3 color = calcPointLight(light_pos[0], light_color[0], normal, vout_surface_pos, view_dir, vout_material_color, 32.0);
+        
+        for(int i = 1; i < light_cnt; i++){
+            color += calcPointLight(light_pos[i], light_color[i], normal, vout_surface_pos, view_dir, vout_material_color, 32.0);
+        }
 
-        // material components
-        vec3 material_ambient = material_color;
-        vec3 material_diffuse = material_color;
-        vec3 material_specular = light_color;  // for non-metal material
-
-        // ambient
-        vec3 ambient = light_ambient * material_ambient;
-
-        // for diffiuse and specular
-        vec3 normal = normalize(vout_normal);
-        vec3 surface_pos = vout_surface_pos;
-        vec3 light_dir = normalize(light_pos - surface_pos);
-
-        // diffuse
-        float diff = max(dot(normal, light_dir), 0);
-        vec3 diffuse = diff * light_diffuse * material_diffuse;
-
-        // specular
-        vec3 view_dir = normalize(view_pos - surface_pos);
-        vec3 reflect_dir = reflect(-light_dir, normal);
-        float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
-        vec3 specular = spec * light_specular * material_specular;
-
-        vec3 color = ambient + diffuse + specular;
-        FragColor = vec4(color, 1.); //TODO: change to (color, 1.)
+        FragColor = vec4(color, 1.); //TODO: change to (color, 1.);
     }
 }
 '''
@@ -178,7 +196,7 @@ def key_callback(window, key, scancode, action, mods):
     
     elif key == GLFW_KEY_H and action == GLFW_PRESS:
         g_animator.change_animating_mode(not g_animator.is_animating)
-        if(g_animator.is_animating):
+        if ((not g_animator.is_prepared_for_animating()) and g_animator.is_animating):
             g_animator.prepare_animating()    
     
     elif key == GLFW_KEY_Z and action == GLFW_PRESS:
@@ -190,6 +208,8 @@ def framebuffer_size_callback(window, width, height):
     glViewport(0, 0, width, height)
 
     g_screen_width, g_screen_height = width, height
+    if height == 0:
+        return
 
     if g_cam.is_projection_ortho:
         ortho_height = 10.
