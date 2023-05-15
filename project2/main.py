@@ -116,7 +116,7 @@ void main()
     else {
         // light and material properties
         int light_cnt = 3;
-        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 20, 0), vec3(-16, 2, 20),};
+        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 20, 0), vec3(-16, 2, 20)};
         vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
 
         vec3 normal = normalize(vout_normal);    
@@ -263,11 +263,44 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_meshg, g_animator
+    global g_mesh, g_animator
 
     g_animator.change_animating_mode(False)
     g_mesh.parse_obj_str(os.path.join(filepath[0]))
     g_mesh.prepare_vao_mesh()
+
+def prepare_vao_frame():
+    # prepare vertex data (in main memory)
+    vertices = glm.array(glm.float32,
+        # position        # color
+         0.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis start
+         5.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
+         0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # y-axis start
+         0.0, 5.0, 0.0,  0.0, 1.0, 0.0, # y-axis end 
+         0.0, 0.0, 0.0,  0.0, 0.0, 1.0, # z-axis start
+         0.0, 0.0, 5.0,  0.0, 0.0, 1.0, # z-axis end 
+    )
+
+    # create and activate VAO (vertex array object)
+    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
+    glBindVertexArray(VAO)      # activate VAO
+
+    # create and activate VBO (vertex buffer object)
+    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
+
+    # copy vertex data to VBO
+    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+    # configure vertex positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+    glEnableVertexAttribArray(0)
+
+    # configure vertex colors
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    glEnableVertexAttribArray(1)
+
+    return VAO
 
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
@@ -300,6 +333,10 @@ def prepare_vao_grid():
     glEnableVertexAttribArray(1)
 
     return VAO
+
+def draw_frame(vao):
+    glBindVertexArray(vao)
+    glDrawArrays(GL_LINES, 0, 6)
 
 def draw_grid(vao):
     glBindVertexArray(vao)
@@ -341,6 +378,7 @@ def main():
 
     # prepare vao
     vao_grid = prepare_vao_grid()
+    vao_frame = prepare_vao_frame()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
@@ -373,6 +411,7 @@ def main():
         
         # draw grid
         draw_grid(vao_grid)
+        draw_frame(vao_frame)
 
         # draw obj file
         if g_mesh.vao is not None and not g_animator.is_animating:

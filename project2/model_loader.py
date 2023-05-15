@@ -51,14 +51,14 @@ class ModelLoader:
         while 문 밖에서 일어나는 모든 일을 처리한다.
         vao 세팅, base 세팅 등.
         '''
-        base = Node(None, glm.vec3(0.3, 0.3, 0.3), glm.vec3(1., 1., 1.))
-        child1 = Node(base, glm.vec3(0.2, 0.2, 0.2), glm.vec3(1., 0.5, 0.5))
-        child2 = Node(base, glm.vec3(0.2, 0.2, 0.2), glm.vec3(1., 0.5, 0.5))
+        base = Node(None, glm.vec3(0.3, 0.3, 0.3))
+        child1 = Node(base, glm.vec3(0.2, 0.2, 0.2))
+        child2 = Node(base, glm.vec3(0.2, 0.2, 0.2))
 
-        child1_1 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
-        child1_2 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
-        child2_1 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
-        child2_2 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015), glm.vec3(1., 0.5, 0.5))
+        child1_1 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015))
+        child1_2 = Node(child1, glm.vec3(0.0015, 0.0015, 0.0015))
+        child2_1 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015))
+        child2_2 = Node(child2, glm.vec3(0.0015, 0.0015, 0.0015))
 
         self.__animating_nodes.append(base)
         self.__animating_nodes.append(child1)

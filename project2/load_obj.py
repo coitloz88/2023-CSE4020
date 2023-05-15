@@ -70,6 +70,7 @@ class Mesh:
                 
                 # 'f': parse the face data
                 elif words[0] == 'f':
+                    # only parse v//vn, v/vt/vn type face
                     vertex_len = len(words) - 1
                     for i in range(1, vertex_len - 1):
                         # 삼각형 하나의 index가 i, j, k로 결정됨
@@ -79,15 +80,24 @@ class Mesh:
                         # -1을 하는 이유: obj 파일에서 첫번째 인덱스는 0이 아닌 1부터 시작하는데,
                         # array에는 0부터 접근가능하기 때문
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1) 
-                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        if len(parsed_face_data) == 3:
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        else:
+                            face_vnormal_indices.append(int(-1))
 
                         parsed_face_data = words[i + 1].split('/')                            
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        if len(parsed_face_data) == 3:
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        else:
+                            face_vnormal_indices.append(int(-1))
 
                         parsed_face_data = words[i + 2].split('/')
                         face_vertex_indices.append(int(parsed_face_data[0]) - 1)
-                        face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        if len(parsed_face_data) == 3:
+                            face_vnormal_indices.append(int(parsed_face_data[2]) - 1)
+                        else:
+                            face_vnormal_indices.append(int(-1))
 
                     if faces_cnt.get(vertex_len) is None:
                         faces_cnt[vertex_len] = 0
@@ -103,7 +113,11 @@ class Mesh:
             for idx in range(used_vertices_len):
                 vbo_arr_data.append(tmp_vertex_pos[face_vertex_indices[idx]])
                 vbo_arr_data.append(tmp_vertex_colors[face_vertex_indices[idx]])
-                vbo_arr_data.append(tmp_vnormals[face_vnormal_indices[idx]])
+
+                if face_vnormal_indices[idx] == -1:
+                    vbo_arr_data.append([float(0), float(0), float(0)])
+                else:
+                    vbo_arr_data.append(tmp_vnormals[face_vnormal_indices[idx]])
 
             self.__filepath = filepath
             self.__vertices = np.concatenate(np.array(vbo_arr_data, dtype='f4'))

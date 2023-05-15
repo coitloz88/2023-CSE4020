@@ -5,7 +5,7 @@ import ctypes
 import numpy as np
 
 class Node:
-    def __init__(self, parent, scale, color):
+    def __init__(self, parent, scale):
         # hierarchy
         self.parent = parent
         self.children = []
@@ -18,7 +18,6 @@ class Node:
 
         # shape
         self.scale = scale
-        self.color = color
 
     def set_transform(self, transform):
         self.transform = transform
@@ -36,5 +35,3 @@ class Node:
         return self.global_transform
     def get_scale(self):
         return self.scale
-    def get_color(self):
-        return self.color
