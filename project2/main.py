@@ -4,8 +4,13 @@ import glm
 import ctypes
 import numpy as np
 from camera import Camera as cam
+from load_obj import Mesh as mesh
+from model_loader import ModelLoader
+import os
 
 g_cam = cam()
+g_mesh = mesh()
+g_animator = ModelLoader()
 
 g_screen_width, g_screen_height = 800, 800
 
@@ -17,17 +22,21 @@ mouse_pressed = {'left': False, 'right': False}
 g_P = glm.mat4()
 
 # show frame
-g_show_frame = True
+g_show_frame = False
 
 g_vertex_shader_src = '''
 #version 330 core
 
-layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_color; 
+layout (location = 0) in vec3 vin_pos;
+layout (location = 1) in vec3 vin_material_color;
+layout (location = 2) in vec3 vin_normal; 
 
-out vec4 vout_color;
+out vec3 vout_surface_pos;
+out vec3 vout_material_color;
+out vec3 vout_normal;
 
 uniform mat4 MVP;
+uniform mat4 M;
 
 void main()
 {
@@ -36,20 +45,90 @@ void main()
 
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_color = vec4(vin_color, 1.);
+    vout_surface_pos = vec3(M * vec4(vin_pos, 1));
+    vout_material_color = vin_material_color;
+
+    if(vin_normal.x == 0 && vin_normal.y == 0 && vin_normal.z == 0) {
+        vout_normal = vec3(0,0,0);
+    } else {
+        vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
+    }
 }
 '''
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec3 vout_surface_pos;
+in vec3 vout_material_color;
+in vec3 vout_normal;
 
 out vec4 FragColor;
 
+uniform vec3 view_pos;
+
+vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_pos, vec3 view_dir, vec3 material_color, float material_shininess){
+    float constant = 1.0f;
+    float linear = 0.015f;
+    float quadratic = 0.007f;
+    
+    // light components
+    vec3 light_ambient = 0.1 * light_color;
+    vec3 light_diffuse = light_color;
+    vec3 light_specular = light_color;
+    vec3 light_dir = normalize(light_pos - surface_pos);
+
+    // material components
+    vec3 material_ambient = material_color;
+    vec3 material_diffuse = material_color;
+    vec3 material_specular = light_color;  // for non-metal material
+    
+    // ambient
+    vec3 ambient = light_ambient * material_ambient;
+
+    // diffuse
+    float diff = max(dot(normal, light_dir), 0);
+    vec3 diffuse = diff * light_diffuse * material_diffuse;
+
+    // specular
+    vec3 reflect_dir = reflect(-light_dir, normal);
+    float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
+    vec3 specular = spec * light_specular * material_specular;
+
+    // attenuation
+    float distance = length(light_pos - surface_pos);
+    float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
+
+    // combine results
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
+
 void main()
 {
-    FragColor = vout_color;
+    if(vout_normal.x == 0 && vout_normal.y == 0 && vout_normal.z == 0) {
+        FragColor = vec4(vout_material_color, 1.);
+    }
+
+    else {
+        // light and material properties
+        int light_cnt = 3;
+        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 20, 0), vec3(-16, 2, 20)};
+        vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
+
+        vec3 normal = normalize(vout_normal);    
+        vec3 view_dir = normalize(view_pos - vout_surface_pos);
+        vec3 color = calcPointLight(light_pos[0], light_color[0], normal, vout_surface_pos, view_dir, vout_material_color, 32.0);
+        
+        for(int i = 1; i < light_cnt; i++){
+            color += calcPointLight(light_pos[i], light_color[i], normal, vout_surface_pos, view_dir, vout_material_color, 32.0);
+        }
+
+        FragColor = vec4(color, 1.); //TODO: change to (color, 1.);
+    }
 }
 '''
 
@@ -97,7 +176,7 @@ def load_shaders(vertex_shader_source, fragment_shader_source):
     return shader_program    # return the shader program
 
 def key_callback(window, key, scancode, action, mods):
-    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame
+    global g_P, g_cam, g_screen_width, g_screen_height, g_show_frame, g_mesh, g_animator
     if key==GLFW_KEY_ESCAPE and action==GLFW_PRESS:
         glfwSetWindowShouldClose(window, GLFW_TRUE)
     elif key == GLFW_KEY_V and action == GLFW_PRESS:
@@ -112,8 +191,17 @@ def key_callback(window, key, scancode, action, mods):
             far = 20.0
             aspect_ratio = g_screen_width/g_screen_height
             g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
+    
     elif key == GLFW_KEY_F and action == GLFW_PRESS:
         g_show_frame = not g_show_frame
+    
+    elif key == GLFW_KEY_H and action == GLFW_PRESS:
+        g_animator.change_animating_mode(not g_animator.is_animating)
+        if ((not g_animator.is_prepared_for_animating()) and g_animator.is_animating):
+            g_animator.prepare_animating()    
+    
+    elif key == GLFW_KEY_Z and action == GLFW_PRESS:
+        g_animator.change_fill_mode()
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_cam, g_screen_width, g_screen_height
@@ -121,6 +209,8 @@ def framebuffer_size_callback(window, width, height):
     glViewport(0, 0, width, height)
 
     g_screen_width, g_screen_height = width, height
+    if height == 0:
+        return
 
     if g_cam.is_projection_ortho:
         ortho_height = 10.
@@ -172,101 +262,23 @@ def scroll_callback(window, x_scroll, y_scroll):
     global g_cam
     g_cam.scroll(0.05, y_scroll)
 
-def drop_callback(window, count, filepath):
-    if count > 1:
-        print("err: drop only one file")
-        return
+def drop_callback(window, filepath):
+    global g_mesh, g_animator
 
-    load_obj_file(filepath)
-
-def load_obj_file(filepath):
-    if len(filepath) == 0:
-        print("err: file format is null")
-        return
-
-    # load obj file
-    vertex_indices = []
-    uv_indices = []
-    normal_indices = []
-
-    temp_vertices = []
-    temp_normals = []
-    temp_uvs = []
-
-    out_vertices = []
-    out_uvs = []
-    out_normals = []
-
-    # open file by length
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
-    
-        # parse obj text
-        for line in lines:
-            words = line.split()
-            # If the line starts with 'v', parse the vertex data.
-            if words[0] == 'v':
-                vertex = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_vertices.append(vertex)
-
-            # If the line starts with 'vt', parse the texture data of vertex.
-            elif words[0] == 'vt':
-                uv = glm.vec2(float(words[1]), -float(words[2]))
-                temp_uvs.append(uv)
-
-            # If the line starts with 'vn', parse the normal data of vertex.
-            elif words[0] == 'vn':
-                normal = glm.vec3(float(words[1]), float(words[2]), float(words[3]))
-                temp_normals.append(normal)
-
-            # If the line starts with 'f', parse the surface(면) data.
-            elif words[0] == 'f':
-                vertex_indices.append(int(words[1].split('/')[0]) - 1)
-                vertex_indices.append(int(words[2].split('/')[0]) - 1)
-                vertex_indices.append(int(words[3].split('/')[0]) - 1)
-
-                uv_indices.append(int(words[1].split('/')[1]) - 1)
-                uv_indices.append(int(words[2].split('/')[1]) - 1)
-                uv_indices.append(int(words[3].split('/')[1]) - 1)
-
-                normal_indices.append(int(words[1].split('/')[2]) - 1)
-                normal_indices.append(int(words[2].split('/')[2]) - 1)
-                normal_indices.append(int(words[3].split('/')[2]) - 1)
-
-            # Ignore any other lines.
-            else:
-                continue
-
-        # for each vertex of triangle
-        vertex_indices_len = len(vertex_indices)
-        for i in range(vertex_indices_len):
-            # get the indices of its attributes
-            vertex_index = vertex_indices[i]
-            uv_index = uv_indices[i]
-            normal_index = normal_indices[i]
-
-            # get the attributes thanks to the index
-            vertex = glm.vec3(temp_vertices[vertex_index - 1])
-            uv = glm.vec2(temp_uvs[uv_index - 1])
-            normal = glm.vec3(temp_normals[normal_index - 1])
-            
-            # put the attributes in buffers
-            out_vertices.append(vertex)
-            out_uvs.append(uv)
-            out_normals.append(normal)
-    
-    return {'vertices': np.array(out_vertices), 'uvs': np.array(out_uvs), 'normals': np.array(out_normals)}
+    g_animator.change_animating_mode(False)
+    g_mesh.parse_obj_str(os.path.join(filepath[0]))
+    g_mesh.prepare_vao_mesh()
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
     vertices = glm.array(glm.float32,
         # position        # color
          0.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis start
-         10, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
+         5.0, 0.0, 0.0,  1.0, 0.0, 0.0, # x-axis end 
          0.0, 0.0, 0.0,  0.0, 1.0, 0.0, # y-axis start
-         0.0, 10, 0.0,  0.0, 1.0, 0.0, # y-axis end 
+         0.0, 5.0, 0.0,  0.0, 1.0, 0.0, # y-axis end 
          0.0, 0.0, 0.0,  0.0, 0.0, 1.0, # z-axis start
-         0.0, 0.0, 10,  0.0, 0.0, 1.0, # z-axis end 
+         0.0, 0.0, 5.0,  0.0, 0.0, 1.0, # z-axis end 
     )
 
     # create and activate VAO (vertex array object)
@@ -294,7 +306,11 @@ def prepare_vao_grid():
     # prepare vertex data (in main memory)
 
     vertices = glm.array(glm.float32,
-    -1.0, 0, -1, 1, 1, 1, -1.0, 0, 1, 1, 1, 1, -0.9, 0, -1, 1, 1, 1, -0.9, 0, 1, 1, 1, 1, -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
+        -1.0, 0, -1, 1, 1, 1,
+        -1.0, 0, 1, 1, 1, 1, 
+        -0.9, 0, -1, 1, 1, 1, 
+        -0.9, 0, 1, 1, 1, 1, 
+        -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
     )
 
     # create and activate VAO (vertex array object)
@@ -318,40 +334,16 @@ def prepare_vao_grid():
 
     return VAO
 
-def prepare_vao_obj(vertices):
-    VAO = glGenVertexArrays(1)
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    return VAO
-
-def draw_frame(vao, MVP, MVP_loc):
+def draw_frame(vao):
     glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 6)
 
-def draw_grid(vao, MVP, MVP_loc):
+def draw_grid(vao):
     glBindVertexArray(vao)
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
     glDrawArrays(GL_LINES, 0, 84)
 
-def draw_obj(vao, MVP, MVP_loc, length):
-    glBindVertexArray(vao)    
-    glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-    glDrawArrays(GL_TRIANGLES, 0, int(length / 3))
-
 def main():
-    global g_P, g_cam, g_show_frame
+    global g_P, g_cam, g_show_frame, g_mesh, g_animator
 
     # initialize glfw
     if not glfwInit():
@@ -374,51 +366,59 @@ def main():
     glfwSetMouseButtonCallback(window, mouse_button_callback)
     glfwSetCursorPosCallback(window, cursor_position_callback)
     glfwSetScrollCallback(window, scroll_callback)
-    # glfwSetDropCallback(window, drop_callback)
+    glfwSetDropCallback(window, drop_callback)
 
     # load shaders
     shader_program = load_shaders(g_vertex_shader_src, g_fragment_shader_src)
 
-    # load obj file
-    obj_data = load_obj_file("C:\\Users\\loveg\\OneDrive - 한양대학교\\바탕 화면\\Computer Graphics\\2023-CSE4020\\project2\\sample.obj")
-
-    print(obj_data)
-
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
+    M_loc = glGetUniformLocation(shader_program, 'M')
+    view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
 
     # prepare vao
-    vao_frame = prepare_vao_frame()
     vao_grid = prepare_vao_grid()
-    vao_obj = prepare_vao_obj(glm.array(obj_data['vertices']))
-    obj_length = len(obj_data['vertices'])
+    vao_frame = prepare_vao_frame()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
+
+    # animation loader
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-
-        # render in "wireframe mode"
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-
+        # glClearColor(0.5, 0.5, 0.5, 1.0)
+        
+        # render mode
+        if g_animator.is_fill:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            
         glUseProgram(shader_program)
 
+        M = glm.mat4()
         V = glm.lookAt(g_cam.pos, g_cam.pos + g_cam.front, g_cam.up)
+
+        MVP = g_P * V * M
+
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
+        glUniform3f(view_pos_loc, g_cam.pos.x, g_cam.pos.y, g_cam.pos.z)
         
         # draw grid
-        draw_grid(vao_grid, g_P*V*glm.mat4(), MVP_loc)
+        draw_grid(vao_grid)
+        draw_frame(vao_frame)
 
-        # draw world frame
-        if g_show_frame:
-            draw_frame(vao_frame, g_P*V*glm.mat4(), MVP_loc)
-        
         # draw obj file
-        draw_obj(vao_obj, g_P*V*glm.mat4(), MVP_loc, obj_length)
-
+        if g_mesh.vao is not None and not g_animator.is_animating:
+            g_mesh.draw_mesh(g_P*V*M, MVP_loc)
+        elif g_animator.is_animating:
+            g_animator.draw_hierarchical(MVP, MVP_loc, M_loc)
+        
         # swap front and back buffers
         glfwSwapBuffers(window)
 
