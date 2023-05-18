@@ -272,7 +272,11 @@ def main():
 
     # create a hirarchical model - Node(parent, link_transform_from_parent, shape_transform, color)
     base = Node(None, glm.mat4(), glm.scale((.2,.2,0.)), glm.vec3(0,0,1))
-    arm = Node(base, glm.translate(glm.vec3(.2,0,0)), glm.translate((.5,0,.01)) * glm.scale((.5,.1,0.)), glm.vec3(1,0,0))
+    arm_right_1 = Node(base, glm.translate(glm.vec3(.2,0,0)), glm.translate((.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(1,0,0))
+    arm_right_2 = Node(arm_right_1, glm.translate(glm.vec3(.45,0,0)), glm.translate((.25,0,.02)) * glm.scale((.25,.1,0.)), glm.vec3(0,1,0))
+
+    arm_left_1 = Node(base, glm.translate(glm.vec3(-.2,0,0)), glm.translate((-.25,0,.01)) * glm.scale((.25,.1,0.)), glm.vec3(1,0,0))
+    arm_left_2 = Node(arm_left_1, glm.translate(glm.vec3(-.5,0,0)), glm.translate((-.25,0,.02)) * glm.scale((.25,.1,0.)), glm.vec3(0,1,0))
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -290,21 +294,26 @@ def main():
         glUseProgram(shader_for_frame)
         draw_frame(vao_frame, P*V*glm.mat4(), MVP_loc_frame)
 
-
         t = glfwGetTime()
 
         # set local transformations of each node
         base.set_joint_transform(glm.translate((glm.sin(t),0,0)))
-        arm.set_joint_transform(glm.rotate(t, (0,0,1)))
-
+        arm_right_1.set_joint_transform(glm.rotate(t, (0,0,1)))
+        arm_right_2.set_joint_transform(glm.rotate(t, (0,0,1)))
+        
+        arm_left_1.set_joint_transform(glm.rotate(-t, (0,0,1)))
+        arm_left_2.set_joint_transform(glm.rotate(-t, (0,0,1)))
+        
         # recursively update global transformations of all nodes
         base.update_tree_global_transform()
 
         # draw nodes
         glUseProgram(shader_for_box)
         draw_node(vao_box, base, P*V, MVP_loc_box, color_loc_box)
-        draw_node(vao_box, arm, P*V, MVP_loc_box, color_loc_box)
-
+        draw_node(vao_box, arm_right_1, P*V, MVP_loc_box, color_loc_box)
+        draw_node(vao_box, arm_right_2, P*V, MVP_loc_box, color_loc_box)
+        draw_node(vao_box, arm_left_1, P*V, MVP_loc_box, color_loc_box)
+        draw_node(vao_box, arm_left_2, P*V, MVP_loc_box, color_loc_box)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
