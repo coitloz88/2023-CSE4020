@@ -199,7 +199,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, WINDOW_HEIGHT, '1-interactive-bezier', None, None)
+    window = glfwCreateWindow(800, WINDOW_HEIGHT, '2020028586', None, None)
     if not window:
         glfwTerminate()
         return
