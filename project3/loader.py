@@ -14,12 +14,50 @@ class Loader:
         self.__root = None
         self.__is_fill = False
 
+        self.frames = 0
+        self.frame_time = 1
+        
+        # for debugging...
+        self.__total_frame_cnt = 0
+        self.__channel_cnt = 0
+
+    @property
+    def root(self):
+        return self.__root
+
     @property
     def is_fill(self):
         return self.__is_fill
 
+    def is_float(self, num):
+        try:
+            float(num)
+            return True
+        except ValueError:
+            return False
+
     def change_is_fill(self, new_is_fill):
         self.__is_fill = new_is_fill
+
+    def parse_channel_data(self, channel_data):
+        '''
+        DFS로 root부터 돌면서 channel data를 파싱하여 넣어줌
+        한 프레임에 대한 channel data를 파싱
+        '''
+        visited = []
+        channel_stack = [self.__root]
+
+        data_cnt = 0
+
+        while channel_stack:
+            current_node = channel_stack.pop()
+            if current_node not in visited:
+                visited.append(current_node)
+                channel_data_per_frame = channel_data[data_cnt:data_cnt + len(current_node.channels)]
+                data_cnt += len(current_node.channels)
+                current_node.append_joint_transform(channel_data_per_frame)
+                for child in current_node.children:
+                    channel_stack.append(child)
 
     def parse_bvh(self, filepath):
         print("call parse bvh")
@@ -35,17 +73,15 @@ class Loader:
                 if len(words) < 1:
                     continue
                 
-                '''
-                Hierarchy에서 가능한 옵션
-                - ROOT: Root node를 가리킴
-                - {: 새로운 하위 노드의 시작을 가리킴
-                - OFFSET: static data인 translational data를 가리킴
-                - CHANNELS: dynamic data인 Rotational data를 가리키기 위함
-                - JOINT: 해당 Joint의 이름을 나타냄
-                - }: 중괄호가 닫힐 때, 해당 노드는 괄호 상위 노드의 자식임을 가리키게 됨
-                     직전의 노드가 부모가 아니라. 상위 노드가 부모
-                - End Site: End effector
-                '''
+                # Hierarchy에서 가능한 옵션
+                # - ROOT: Root node를 가리킴
+                # - {: 새로운 하위 노드의 시작을 가리킴
+                # - OFFSET: static data인 translational data를 가리킴
+                # - CHANNELS: dynamic data인 Rotational data를 가리키기 위함
+                # - JOINT: 해당 Joint의 이름을 나타냄
+                # - }: 중괄호가 닫힐 때, 해당 노드는 괄호 상위 노드의 자식임을 가리키게 됨
+                #      직전의 노드가 부모가 아니라. 상위 노드가 부모
+                # - End Site: End effector
                 
                 if words[0] == '{':
                     parent_joint = current_joint
@@ -59,9 +95,9 @@ class Loader:
 
                 elif words[0] == 'CHANNELS':
                     total_length = int(words[1])
+                    self.__channel_cnt += total_length
                     for i in range(total_length):
                         current_joint.channels.append(words[i + 2])
-                    print("pass " + current_joint.joint_name)
 
                 elif words[0] == 'ROOT' or words[0] == 'JOINT' or words[0] == 'End':
                     current_joint = Joint(parent_joint, words[1], glm.vec3(1,1,1)) # TODO: End site는 이름 설정 X
@@ -69,13 +105,21 @@ class Loader:
                     if words[0] == 'ROOT':
                         self.__root = current_joint
 
-                '''
-                Motion에서 가능한 옵션
-                - Frames: 총 pose의 개수
-                - Frame Time: FPS
-                - 이외의 숫자 옵션: 각 column의 offset을 저장함
-                '''
-        
+                # Motion에서 가능한 옵션
+                # - Frames: 총 pose의 개수
+                # - Frame Time: FPS
+                # - 이외의 숫자 옵션: 각 column의 offset을 저장함
+ 
+                elif words[0] == 'Frames:':
+                    self.frames = int(words[1])
+                
+                elif words[0] == 'Frame' and words[1] == 'Time:':
+                    self.frame_time = float(words[2])
+                
+                elif self.is_float(words[0]):
+                    self.__total_frame_cnt += 1
+                    self.parse_channel_data(words)
+
         self.__filepath = filepath
 
     def draw_animation(self):
