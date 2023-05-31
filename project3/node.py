@@ -5,20 +5,31 @@ import ctypes
 import numpy as np
 
 class Node:
-    def __init__(self, parent, link_transform_from_parent, color):
+    def __init__(self, parent, node_name, color):
         # hierarchy
         self.parent = parent
         self.children = []
         if parent is not None:
             parent.children.append(self)
 
-        # transform
-        self.link_transform_from_parent = link_transform_from_parent
+        # link transform (static data)
+        self.link_transform_from_parent = glm.mat4() # offset
+        
+        # joint transform (dynamic data)
+        self.channels = [] 
         self.joint_transform = glm.mat4()
+
+        # global transformation matrix for calculating
         self.global_transform = glm.mat4()
 
         # color
         self.color = color
+
+        # name
+        self.joint_name = node_name
+    
+    def set_link_transformation(self, link_transformation):
+        self.link_transform_from_parent = link_transformation
 
     def set_joint_transform(self, joint_transform):
         self.joint_transform = joint_transform
@@ -46,4 +57,3 @@ class Node:
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
         glUniform3f(color_loc, color.r, color.g, color.b)
         glDrawArrays(GL_TRIANGLES, 0, 36)
-
