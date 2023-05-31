@@ -22,19 +22,20 @@ g_P = glm.mat4()
 # show frame
 g_show_frame = False
 
+g_max_frame = 0
+
 g_vertex_shader_src = '''
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos;
 layout (location = 1) in vec3 vin_material_color;
-layout (location = 2) in vec3 vin_normal; 
 
 out vec3 vout_surface_pos;
 out vec3 vout_material_color;
-out vec3 vout_normal;
 
 uniform mat4 MVP;
 uniform mat4 M;
+uniform vec3 color;
 
 void main()
 {
@@ -45,12 +46,6 @@ void main()
 
     vout_surface_pos = vec3(M * vec4(vin_pos, 1));
     vout_material_color = vin_material_color;
-
-    if(vin_normal.x == 0 && vin_normal.y == 0 && vin_normal.z == 0) {
-        vout_normal = vec3(0,0,0);
-    } else {
-        vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
-    }
 }
 '''
 
@@ -59,7 +54,6 @@ g_fragment_shader_src = '''
 
 in vec3 vout_surface_pos;
 in vec3 vout_material_color;
-in vec3 vout_normal;
 
 out vec4 FragColor;
 
@@ -107,6 +101,8 @@ vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_
 
 void main()
 {
+    FragColor = vec4(vout_material_color, 1.);
+    /*
     if(vout_normal.x == 0 && vout_normal.y == 0 && vout_normal.z == 0) {
         FragColor = vec4(vout_material_color, 1.);
     }
@@ -126,7 +122,7 @@ void main()
         }
 
         FragColor = vec4(color, 1.);
-    }
+    }*/
 }
 '''
 
@@ -259,9 +255,10 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_loader
+    global g_loader, g_max_frame
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
+    g_max_frame = g_loader.frames
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -394,11 +391,11 @@ def prepare_vao_cube():
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
 
     # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), None)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
 
     # configure vertex color
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
     glEnableVertexAttribArray(1)
 
     return VAO
@@ -444,6 +441,7 @@ def main():
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
     M_loc = glGetUniformLocation(shader_program, 'M')
     view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
+    color_loc = glGetUniformLocation(shader_program, 'color_loc')
 
     # prepare vao
     vao_grid = prepare_vao_grid()
@@ -452,6 +450,9 @@ def main():
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
+
+    global_adder = 0
+    frame = 0
 
     # animation loader
 
@@ -482,6 +483,18 @@ def main():
         # draw grid
         draw_grid(vao_grid)
         draw_frame(vao_frame)
+
+        if(g_loader.root is not None):
+            global_adder += 1
+
+            if global_adder % 100 == 0:
+                frame += 1
+            
+            if frame == g_loader.frames:
+                frame = 0
+                global_adder = 0
+
+            g_loader.draw_animation(vao_cube, g_P*V, MVP_loc, color_loc, frame)
 
         # draw obj file
         # if g_mesh.vao is not None and not g_animator.is_animating:

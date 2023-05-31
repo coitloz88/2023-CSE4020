@@ -56,7 +56,8 @@ class Loader:
                 channel_data_per_frame = channel_data[data_cnt:data_cnt + len(current_node.channels)]
                 data_cnt += len(current_node.channels)
                 current_node.append_joint_transform(channel_data_per_frame)
-                for child in current_node.children:
+
+                for child in reversed(current_node.children):
                     channel_stack.append(child)
 
     def parse_bvh(self, filepath):
@@ -122,9 +123,21 @@ class Loader:
 
         self.__filepath = filepath
 
-    def draw_animation(self):
+    def draw_animation(self, vao, VP, MVP_loc, color_loc, frame):
         '''
         그려야하는 cube 개수만큼(root + joint 개수만큼),
         joint 배열을 순회하면서 해당 joint node의 draw를 호출
         '''
-        pass
+        self.__root.update_tree_global_transform(frame)
+
+        visited = []
+        channel_stack = [self.__root]
+
+        while channel_stack:
+            current_node = channel_stack.pop()
+            if current_node not in visited:
+                visited.append(current_node)
+                current_node.draw_node(vao, VP, MVP_loc, color_loc)
+
+                for child in reversed(current_node.children):
+                    channel_stack.append(child)

@@ -20,7 +20,7 @@ class Node:
         self.joint_transform = []
 
         # global transformation matrix for calculating
-        self.global_transform = []
+        self.global_transform = glm.mat4()
         # color
         self.color = color
 
@@ -38,38 +38,39 @@ class Node:
         R = glm.mat4()
 
         for i, joint_transform in enumerate(joint_transforms):
-            if self.channels[i] == 'Xposition':
+            channel_i = self.channels[i].lower()
+            if channel_i == 'xposition':
                 T_x = float(joint_transform)
-            elif self.channels[i] == 'Yposition':
+            elif channel_i == 'yposition':
                 T_y = float(joint_transform)
-            elif self.channels[i] == 'Zposition':
+            elif channel_i == 'zposition':
                 T_z = float(joint_transform)
-            elif self.channels[i] == 'Xrotation':
-                R = glm.rotate(float(joint_transform), (1, 0, 0)) * R
-            elif self.channels[i] == 'Yrotation':
-                R = glm.rotate(float(joint_transform), (0, 1, 0)) * R
-            elif self.channels[i] == 'Zrotation':
-                R = glm.rotate(float(joint_transform), (0, 0, 1)) * R
+            elif channel_i == 'xrotation':
+                R = R * glm.rotate(glm.radians(float(joint_transform)), (1, 0, 0))
+            elif channel_i == 'yrotation':
+                R = R * glm.rotate(glm.radians(float(joint_transform)), (0, 1, 0))
+            elif channel_i == 'zrotation':
+                R = R * glm.rotate(glm.radians(float(joint_transform)), (0, 0, 1))
 
         self.joint_transform.append(glm.translate(glm.vec3(T_x, T_y, T_z)) * R)
 
-    def get_global_transform(self, frame):
-        return self.global_transform[frame]
+    def get_global_transform(self):
+        return self.global_transform
     
     def get_color(self):
         return self.color
     
     def update_tree_global_transform(self, frame):
         if self.parent is not None:
-            self.global_transform = self.parent.get_global_transform(frame) * self.link_transform_from_parent * self.joint_transform[frame]
+            self.global_transform = self.parent.get_global_transform() * self.link_transform_from_parent * self.joint_transform[frame]
         else:
-            self.global_transform = self.link_transform_from_parent * self.joint_transform
+            self.global_transform = self.link_transform_from_parent * self.joint_transform[frame]
 
         for child in self.children:
             child.update_tree_global_transform(frame)
 
-    def draw_node(self, vao, VP, MVP_loc, color_loc, frame):
-        MVP = VP * self.get_global_transform(frame)
+    def draw_node(self, vao, VP, MVP_loc, color_loc):
+        MVP = VP * self.get_global_transform()
         color = self.get_color()
 
         glBindVertexArray(vao)
