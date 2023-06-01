@@ -22,8 +22,6 @@ g_P = glm.mat4()
 # show frame
 g_show_frame = False
 
-g_max_frame = 0
-
 g_vertex_shader_src = '''
 #version 330 core
 
@@ -194,6 +192,9 @@ def key_callback(window, key, scancode, action, mods):
 
     elif key == GLFW_KEY_2 and action == GLFW_PRESS:
         g_loader.change_is_fill(True)
+    
+    elif key == GLFW_KEY_SPACE and action == GLFW_PRESS:
+        g_loader.change_is_animating()
 
 def framebuffer_size_callback(window, width, height):
     global g_P, g_cam, g_screen_width, g_screen_height
@@ -255,10 +256,10 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_loader, g_max_frame
+    global g_loader
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
-    g_max_frame = g_loader.frames
+    g_loader.prepare_vaos_line()
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -461,7 +462,7 @@ def main():
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-        # glClearColor(0.5, 0.5, 0.5, 1.0)
+        glClearColor(0.5, 0.5, 0.5, 1.0)
         
         # render mode
         if g_loader.is_fill:
@@ -485,16 +486,17 @@ def main():
         draw_frame(vao_frame)
 
         if(g_loader.root is not None):
-            global_adder += 1
+            if g_loader.is_animating:
+                global_adder += 1
 
-            if global_adder % 100 == 0:
-                frame += 1
-            
-            if frame == g_loader.frames:
-                frame = 0
-                global_adder = 0
+                if global_adder % 100 == 0:
+                    frame += 1
+                
+                if frame == g_loader.frames:
+                    frame = 0
+                    global_adder = 0
 
-            g_loader.draw_animation(vao_cube, g_P*V, MVP_loc, color_loc, frame)
+            g_loader.draw_animation(g_P*V, MVP_loc, color_loc, frame)
 
         # draw obj file
         # if g_mesh.vao is not None and not g_animator.is_animating:

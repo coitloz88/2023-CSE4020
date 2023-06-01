@@ -13,7 +13,7 @@ class Node:
             parent.children.append(self)
 
         # link transform (static data)
-        self.link_transform_from_parent = glm.mat4() # offset
+        self.link_transform_from_parent = glm.mat4() # translation matrix
         
         # joint transform (dynamic data)
         self.channels = [] 
@@ -26,7 +26,10 @@ class Node:
 
         # name
         self.joint_name = node_name
-    
+
+        # calculated vao for each node
+        self.vao = None
+
     def set_link_transformation(self, link_transformation):
         self.link_transform_from_parent = link_transformation
 
@@ -69,11 +72,49 @@ class Node:
         for child in self.children:
             child.update_tree_global_transform(frame)
 
-    def draw_node(self, vao, VP, MVP_loc, color_loc):
-        MVP = VP * self.get_global_transform()
+    def prepare_vao_line(self):
+        color = 0.3
+        if self.parent is not None and self.parent.joint_name == 'Hips':
+            color = 0.8
+
+        # prepare vertex data (in main memory)
+        vertices = glm.array(glm.float32,
+            # position        # color
+            0.0, 0.0, 0.0,  1.0, color, color, # line start
+            self.link_transform_from_parent[3].x, self.link_transform_from_parent[3].y, self.link_transform_from_parent[3].z,  1.0, color, color, # line end(each of them is offset, xyz value)
+        )
+
+        # create and activate VAO (vertex array object)
+        VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
+        glBindVertexArray(VAO)      # activate VAO
+
+        # create and activate VBO (vertex buffer object)
+        VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
+        glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
+
+        # copy vertex data to VBO
+        glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
+
+        # configure vertex positions
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+        glEnableVertexAttribArray(0)
+
+        # configure vertex colors
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(1)
+
+        self.vao = VAO
+
+    def draw_node(self, VP, MVP_loc, color_loc):
+        MVP = glm.mat4()
+
+        if self.parent is not None:
+            MVP = VP * self.parent.get_global_transform()
+        else:
+            MVP = VP * self.get_global_transform()
         color = self.get_color()
 
-        glBindVertexArray(vao)
+        glBindVertexArray(self.vao)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
         glUniform3f(color_loc, color.r, color.g, color.b)
-        glDrawArrays(GL_TRIANGLES, 0, 36)
+        glDrawArrays(GL_LINES, 0, 2)

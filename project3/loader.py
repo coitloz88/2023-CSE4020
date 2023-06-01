@@ -12,7 +12,9 @@ class Loader:
     def __init__(self):
         self.__filepath = ""
         self.__root = None
+        
         self.__is_fill = False
+        self.__is_animating = False
 
         self.frames = 0
         self.frame_time = 1
@@ -28,6 +30,10 @@ class Loader:
     @property
     def is_fill(self):
         return self.__is_fill
+    
+    @property
+    def is_animating(self):
+        return self.__is_animating
 
     def is_float(self, num):
         try:
@@ -38,6 +44,9 @@ class Loader:
 
     def change_is_fill(self, new_is_fill):
         self.__is_fill = new_is_fill
+
+    def change_is_animating(self):
+        self.__is_animating = not self.__is_animating
 
     def parse_channel_data(self, channel_data):
         '''
@@ -123,12 +132,28 @@ class Loader:
 
         self.__filepath = filepath
 
-    def draw_animation(self, vao, VP, MVP_loc, color_loc, frame):
+    def prepare_vaos_line(self):
+        visited = []
+        channel_stack = [self.__root]
+
+        while channel_stack:
+            current_node = channel_stack.pop()
+            if current_node not in visited:
+                visited.append(current_node)
+                current_node.prepare_vao_line()
+
+                for child in reversed(current_node.children):
+                    channel_stack.append(child)
+        
+        self.__root.update_tree_global_transform(0)
+
+    def draw_animation(self, VP, MVP_loc, color_loc, frame):
         '''
         그려야하는 cube 개수만큼(root + joint 개수만큼),
         joint 배열을 순회하면서 해당 joint node의 draw를 호출
         '''
-        self.__root.update_tree_global_transform(frame)
+        if self.__is_animating:
+            self.__root.update_tree_global_transform(frame)
 
         visited = []
         channel_stack = [self.__root]
@@ -137,7 +162,7 @@ class Loader:
             current_node = channel_stack.pop()
             if current_node not in visited:
                 visited.append(current_node)
-                current_node.draw_node(vao, VP, MVP_loc, color_loc)
+                current_node.draw_node(VP, MVP_loc, color_loc)
 
                 for child in reversed(current_node.children):
                     channel_stack.append(child)
