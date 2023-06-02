@@ -182,11 +182,11 @@ def key_callback(window, key, scancode, action, mods):
             ortho_height = 1.
             ortho_width = ortho_height * g_screen_width/g_screen_height
             g_P = glm.ortho(-ortho_width*.5,ortho_width*.5, -ortho_height*.5,ortho_height*.5, -10,10)
-        else: 
-            near = 0.5
-            far = 20.0
+        else:
+            near = 0.05
+            far = 10000.0
             aspect_ratio = g_screen_width/g_screen_height
-            g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
+            g_P = glm.perspective(glm.radians(60.0), aspect_ratio, near, far)
     
     elif key == GLFW_KEY_F and action == GLFW_PRESS:
         g_show_frame = not g_show_frame
@@ -260,7 +260,7 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_loader, g_global_adder, g_frame
+    global g_loader, g_global_adder, g_frame, g_last_time
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
     g_loader.print_bvh_data()
