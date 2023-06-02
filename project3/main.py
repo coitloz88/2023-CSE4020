@@ -214,8 +214,8 @@ def framebuffer_size_callback(window, width, height):
         ortho_width = ortho_height * width/height
         g_P = glm.ortho(-ortho_width*.5, ortho_width*.5, -ortho_height*.5, ortho_height*.5, -10,10)
     else: 
-        near = 0.5
-        far = 20.0
+        near = 0.1
+        far = 10000.0
         aspect_ratio = width/height
         g_P = glm.perspective(glm.radians(45.0), aspect_ratio, near, far)
 

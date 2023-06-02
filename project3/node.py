@@ -124,31 +124,31 @@ class Node:
             -thickness, height, thickness,  1, 1, 1, # v0
             thickness, 0, thickness,  1, 1, 1, # v2
             thickness, height, thickness,  1, 1, 1, # v1
-                        
+
             -thickness, height, thickness,  1, 1, 1, # v0
             -thickness, 0,  thickness,  1, 1, 1, # v3
             thickness, 0, thickness,  1, 1, 1, # v2
-                        
+ 
             -thickness , height, -thickness,  1, 1, 1, # v4
             thickness, height, -thickness,  1, 1, 1, # v5
             thickness, 0, -thickness,  1, 1, 1, # v6
-                        
+
             -thickness , height, -thickness,  1, 1, 1, # v4
             thickness, 0, -thickness,  1, 1, 1, # v6
             -thickness, 0, -thickness,  1, 1, 1, # v7
-                        
+
             -thickness, height, thickness,  1, 1, 1, # v0
             thickness, height, thickness,  1, 1, 1, # v1
             thickness, height, -thickness,  1, 1, 1, # v5
-                        
+
             -thickness, height, thickness,  1, 1, 1, # v0
             thickness, height, -thickness,  1, 1, 1, # v5
             -thickness , height, -thickness,  1, 1, 1, # v4
-    
+
             -thickness, 0,  thickness,  1, 1, 1, # v3
             thickness, 0, -thickness,  1, 1, 1, # v6
             thickness, 0, thickness,  1, 1, 1, # v2
-                        
+
             -thickness, 0,  thickness,  1, 1, 1, # v3
             -thickness, 0, -thickness,  1, 1, 1, # v7
             thickness, 0, -thickness,  1, 1, 1, # v6
