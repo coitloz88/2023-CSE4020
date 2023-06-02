@@ -263,6 +263,7 @@ def drop_callback(window, filepath):
     global g_loader, g_global_adder, g_frame
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
+    g_loader.print_bvh_data()
     g_loader.prepare_vaos_line()
     g_loader.prepare_vaos_box()
     g_last_time = glfwGetTime()

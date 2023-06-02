@@ -22,6 +22,7 @@ class Loader:
         # for debugging...
         self.__total_frame_cnt = 0
         self.__channel_cnt = 0
+        self.__total_joint_cnt = 0
 
     @property
     def root(self):
@@ -70,8 +71,6 @@ class Loader:
                     channel_stack.append(child)
 
     def parse_bvh(self, filepath):
-        print("call parse bvh")
-        
         self.__is_animating = False
 
         with open(filepath, 'r') as f:
@@ -113,8 +112,15 @@ class Loader:
                         current_joint.channels.append(words[i + 2])
 
                 elif words[0] == 'ROOT' or words[0] == 'JOINT' or words[0] == 'End':
-                    current_joint = Joint(parent_joint, words[1], glm.vec3(1,1,1)) # TODO: End site는 이름 설정 X
+                    joint_name = words[1]
 
+                    if words[0] == 'End':
+                        joint_name = words[0] + " " + words[1]
+                        self.__total_joint_cnt -= 1
+
+                    current_joint = Joint(parent_joint, joint_name, glm.vec3(1,1,1)) # TODO: End site는 이름 설정 X
+                    self.__total_joint_cnt += 1
+                    
                     if words[0] == 'ROOT':
                         self.__root = current_joint
 
@@ -134,6 +140,29 @@ class Loader:
                     self.parse_channel_data(words)
 
         self.__filepath = filepath
+
+    def print_bvh_data(self):
+        print("file name: " + str(self.__filepath.split()[-1])) # TODO: p2 참고해서 filename 파싱
+        print("number of frames: " + str(self.__total_frame_cnt))
+        print("FPS: " + str(1 / self.frame_time))
+        print("number of joints: " + str(self.__total_joint_cnt))
+
+        visited = []
+        dfs_joint_name = []
+        channel_stack = [self.__root]
+
+        while channel_stack:
+            current_node = channel_stack.pop()
+            if current_node not in visited:
+                visited.append(current_node)
+
+                if current_node.joint_name != "End Site": # TODO: Joint에 End effector도 포함되나?
+                    dfs_joint_name.append(current_node.joint_name)
+
+                for child in reversed(current_node.children):
+                    channel_stack.append(child)
+
+        print("all of joint name: " + str(dfs_joint_name))
 
     def prepare_vaos_line(self):
         visited = []
