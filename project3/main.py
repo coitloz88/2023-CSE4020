@@ -22,6 +22,10 @@ g_P = glm.mat4()
 # show frame
 g_show_frame = False
 
+# for frame counting
+g_frame = 0
+g_last_time = 0
+
 g_vertex_shader_src = '''
 #version 330 core
 
@@ -256,10 +260,13 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.05, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_loader
+    global g_loader, g_global_adder, g_frame
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
     g_loader.prepare_vaos_line()
+    g_loader.prepare_vaos_box()
+    g_last_time = glfwGetTime()
+    g_frame = 0
 
 def prepare_vao_frame():
     # prepare vertex data (in main memory)
@@ -326,81 +333,6 @@ def prepare_vao_grid():
 
     return VAO
 
-def prepare_vao_cube():
-    # prepare vertex data (in main memory)
-    # 36 vertices for 12 triangles
-    vertices = glm.array(glm.float32,
-        # position            color
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-        0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-        0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-                    
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-        0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-                    
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-        0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-        0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-                    
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-                    
-        0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-        0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v2
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-                    
-        0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v1
-        0.5 , -0.5 , -0.5 ,  1, 1, 1, # v6
-        0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v5
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-        -0.5 , -0.5 ,  0.5 ,  1, 1, 1, # v3
-                    
-        -0.5 ,  0.5 ,  0.5 ,  1, 1, 1, # v0
-        -0.5 ,  0.5 , -0.5 ,  1, 1, 1, # v4
-        -0.5 , -0.5 , -0.5 ,  1, 1, 1, # v7
-    )
-
-    # create and activate VAO (vertex array object)
-    VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
-    glBindVertexArray(VAO)      # activate VAO
-
-    # create and activate VBO (vertex buffer object)
-    VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
-    glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
-
-    # copy vertex data to VBO
-    glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
-
-    # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
-    glEnableVertexAttribArray(0)
-
-    # configure vertex color
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
-    glEnableVertexAttribArray(1)
-
-    return VAO
-
 def draw_frame(vao):
     glBindVertexArray(vao)
     glDrawArrays(GL_LINES, 0, 6)
@@ -410,7 +342,7 @@ def draw_grid(vao):
     glDrawArrays(GL_LINES, 0, 84)
 
 def main():
-    global g_P, g_cam, g_show_frame, g_loader
+    global g_P, g_cam, g_show_frame, g_loader, g_last_time, g_frame
 
     # initialize glfw
     if not glfwInit():
@@ -447,22 +379,19 @@ def main():
     # prepare vao
     vao_grid = prepare_vao_grid()
     vao_frame = prepare_vao_frame()
-    vao_cube = prepare_vao_cube()
 
     # initialize projection matrix
     g_P = glm.perspective(glm.radians(45.0), 1, 0.5, 20)
 
-    global_adder = 0
-    frame = 0
-
     # animation loader
+    last_time = glfwGetTime()
+    current_time = last_time
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
         # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
-        glClearColor(0.5, 0.5, 0.5, 1.0)
         
         # render mode
         if g_loader.is_fill:
@@ -486,24 +415,19 @@ def main():
         draw_frame(vao_frame)
 
         if(g_loader.root is not None):
+            # last_time - current_time(dt)가 frame time 보다 길때, 새롭게 그린다.
+
             if g_loader.is_animating:
-                global_adder += 1
+                current_time = glfwGetTime()
+                if current_time - g_last_time >= g_loader.frame_time:
+                    g_last_time = current_time
+                    g_frame += 1
 
-                if global_adder % 100 == 0:
-                    frame += 1
+                if g_frame == g_loader.frames:
+                    g_frame = 0 # 새로운 drop callback이 실행될 때 frame 초기화
                 
-                if frame == g_loader.frames:
-                    frame = 0
-                    global_adder = 0
+            g_loader.draw_animation(g_P*V, MVP_loc, color_loc, g_frame)
 
-            g_loader.draw_animation(g_P*V, MVP_loc, color_loc, frame)
-
-        # draw obj file
-        # if g_mesh.vao is not None and not g_animator.is_animating:
-        #     g_mesh.draw_mesh(g_P*V*M, MVP_loc)
-        # elif g_animator.is_animating:
-        #     g_animator.draw_hierarchical(MVP, MVP_loc, M_loc)
-        
         # swap front and back buffers
         glfwSwapBuffers(window)
 

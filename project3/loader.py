@@ -71,6 +71,9 @@ class Loader:
 
     def parse_bvh(self, filepath):
         print("call parse bvh")
+        
+        self.__is_animating = False
+
         with open(filepath, 'r') as f:
             lines = f.readlines()
             
@@ -145,11 +148,26 @@ class Loader:
                 for child in reversed(current_node.children):
                     channel_stack.append(child)
         
-        self.__root.update_tree_global_transform(0)
+        self.__root.update_tree_global_transform_skeleton()
+
+    def prepare_vaos_box(self):
+        visited = []
+        channel_stack = [self.__root]
+
+        while channel_stack:
+            current_node = channel_stack.pop()
+            if current_node not in visited:
+                visited.append(current_node)
+                current_node.prepare_vao_box()
+
+                for child in reversed(current_node.children):
+                    channel_stack.append(child)
+        
+        self.__root.update_tree_global_transform_skeleton()
 
     def draw_animation(self, VP, MVP_loc, color_loc, frame):
         '''
-        그려야하는 cube 개수만큼(root + joint 개수만큼),
+        그려야하는 box 개수만큼(root + joint 개수만큼),
         joint 배열을 순회하면서 해당 joint node의 draw를 호출
         '''
         if self.__is_animating:
@@ -162,7 +180,11 @@ class Loader:
             current_node = channel_stack.pop()
             if current_node not in visited:
                 visited.append(current_node)
-                current_node.draw_node(VP, MVP_loc, color_loc)
+
+                if self.__is_fill:
+                    current_node.draw_node_box(VP, MVP_loc, color_loc)
+                else:
+                    current_node.draw_node_line(VP, MVP_loc, color_loc)
 
                 for child in reversed(current_node.children):
                     channel_stack.append(child)
