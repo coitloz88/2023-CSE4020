@@ -20,6 +20,7 @@ out vec4 vout_color;
 out vec2 vout_uv;
 
 uniform mat4 MVP;
+uniform float U_Translate;
 
 void main()
 {
@@ -29,7 +30,7 @@ void main()
     gl_Position = MVP * p3D_in_hcoord;
 
     vout_color = vec4(vin_color, 1.);
-    vout_uv = vin_uv;
+    vout_uv = vec2(vin_uv.x + U_Translate, vin_uv.y);
 }
 '''
 
@@ -41,16 +42,10 @@ in vec2 vout_uv;  // interpolated texture coordinates
 
 out vec4 FragColor;
 
-uniform sampler2D texture1;  // sampler2D: GLSL built-in datatype for 2D texture object
+uniform sampler2D texture1;
 
 void main()
 {
-    //FragColor = vout_color;
-
-    // vec4 texture(sampler, uv)
-    // : retrive the color of the specified texture at the specified texture coordinates
-    //   sampler: texture sampler2D
-    //   uv: texture coordinates
     FragColor = texture(texture1, vout_uv);
 }
 '''
@@ -118,9 +113,13 @@ def prepare_vao_triangle():
     # prepare vertex data (in main memory)
     vertices = glm.array(glm.float32,
         # position      # color         # texture coordinates
-         0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  0.0, 0.0,  # v0
-         0.5, 0.0, 0.0,  0.0, 1.0, 0.0,  1.0, 0.0,  # v1
-         0.0, 0.5, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0,  # v2
+         0.0, 0.5, 0.0,  1.0, 0.0, 0.0,  -0.5, 1.0,  # v0
+         1.0, 0.0, 0.0,  0.0, 1.0, 0.0,  1.5, 0.0,  # v1
+         1.0, 0.5, 0.0,  0.0, 0.0, 1.0,  1.5, 1.0,  # v2
+
+         0.0, 0.5, 0.0,  1.0, 0.0, 0.0,  -0.5, 1.0,  # v0
+         0.0, 0.0, 0.0,  0.0, 1.0, 0.0,  -0.5, 0.0,  # v1
+         1.0, 0.0, 0.0,  0.0, 0.0, 1.0,  1.5, 0.0,  # v2
     )
 
     # create and activate VAO (vertex array object)
@@ -159,7 +158,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '1-triangle-texture', None, None)
+    window = glfwCreateWindow(800, 800, '2020028586', None, None)
     if not window:
         glfwTerminate()
         return
@@ -173,6 +172,7 @@ def main():
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
+    U_Translate_loc = glGetUniformLocation(shader_program, 'U_Translate')
     
     # prepare vaos
     vao_triangle = prepare_vao_triangle()
@@ -181,24 +181,43 @@ def main():
     # texture
 
     # create texture
-    texture1 = glGenTextures(1)             # create texture object
-    glBindTexture(GL_TEXTURE_2D, texture1)  # activate texture1 as GL_TEXTURE_2D
+    texture1 = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, texture1)
 
-    # set texture filtering parameters - skip at this moment
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+    # set texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    # set the texture wrapping parameters
+    # default: GL_REPEAT
+
+    # GL_TEXTURE_WRAP_S: in s-coordinate (== u-coordinate in uv space)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRROR_CLAMP_TO_EDGE)
+    
+    # GL_TEXTURE_WRAP_T: in t-coordinate (== v-coordinate in uv space)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    # glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRROR_CLAMP_TO_EDGE)
 
     try:
         current_dir, file = os.path.split(os.path.abspath(__file__))
-        img = Image.open(os.path.join(current_dir, "320px-Solarsystemscope_texture_8k_earth_daymap.jpg"))
+        img = Image.open(os.path.join(current_dir, './texture_emoji.jpg'))
         
         # vertically filp the image 
         # because OpenGL expects 0.0 on y-axis to be on the bottom edge, but images usually have 0.0 at the top of the y-axis
         img = img.transpose(Image.FLIP_TOP_BOTTOM)
 
-        # specify a 2D texture image
         # glTexImage2D(target, level, texture internalformat, width, height, border, image data format, image data type, data)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0, GL_RGB, GL_UNSIGNED_BYTE, img.tobytes())
+    
+        # generate mipmaps
+        glGenerateMipmap(GL_TEXTURE_2D)
 
         img.close()
 
@@ -206,11 +225,6 @@ def main():
         print("Failed to load texture")
 
     ############################################
-
-    # if your triangle shows up as completely black, uncomment the following lines.
-    # glActiveTexture(GL_TEXTURE0)
-    # glBindTexture(GL_TEXTURE_2D, texture1)
-
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
@@ -228,15 +242,19 @@ def main():
         V = glm.lookAt(glm.vec3(.1*np.sin(g_cam_ang),g_cam_height,.1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
 
         # modeling matrix
-        M = glm.mat4()
+        # M = glm.mat4()
+        M = glm.scale(glm.vec3(2,2,2))
 
         # current frame: P*V*M
         MVP = P*V*M
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
 
+        t = glfwGetTime()
+        glUniform1f(U_Translate_loc, t)
+
         # draw triangle w.r.t. the current frame
         glBindVertexArray(vao_triangle)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glDrawArrays(GL_TRIANGLES, 0, 6)
 
         # swap front and back buffers
         glfwSwapBuffers(window)

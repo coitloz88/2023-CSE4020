@@ -4,6 +4,7 @@ import glm
 import ctypes
 import numpy as np
 from PIL import Image
+import os
 
 g_cam_ang = 0.
 g_cam_height = .1
@@ -194,7 +195,8 @@ def main():
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
     try:
-        img = Image.open('./320px-Solarsystemscope_texture_8k_earth_daymap.jpg')
+        current_dir, file = os.path.split(os.path.abspath(__file__))
+        img = Image.open(os.path.join(current_dir, './320px-Solarsystemscope_texture_8k_earth_daymap.jpg'))
         
         # vertically filp the image 
         # because OpenGL expects 0.0 on y-axis to be on the bottom edge, but images usually have 0.0 at the top of the y-axis
