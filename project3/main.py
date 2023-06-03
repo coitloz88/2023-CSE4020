@@ -312,15 +312,11 @@ def prepare_vao_grid():
     max_grid = 200
     vertices = []
     color = [1.0, 1.0, 1.0]
-    cnt = 0
 
     for i in range(-max_grid, max_grid + 1, 8):
         calculated_max = max_grid * 0.1
         calculated_position = i * 0.1
         vertices.append([[calculated_max, 0, calculated_position], color, [-calculated_max, 0, calculated_position], color, [calculated_position, 0, calculated_max], color, [calculated_position, 0, -calculated_max], color])
-        cnt += 4
-
-    print(vertices)
 
     vertices = glm.array(np.concatenate(np.array(vertices, dtype='f4')))
 
@@ -365,7 +361,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, 'project2: Obj viewer & Hierarchical Model', None, None)
+    window = glfwCreateWindow(800, 800, 'project3: bvh viewer', None, None)
     if not window:
         glfwTerminate()
         return
