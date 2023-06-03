@@ -114,7 +114,7 @@ class Node:
     def prepare_vao_box(self):
         # prepare vertex data (in main memory)
         # 36 vertices for 12 triangles
-        thickness = 0.005
+        thickness = 0.5
 
         offset_x = self.link_transform_from_parent[3].x
         offset_y = self.link_transform_from_parent[3].y
@@ -134,18 +134,17 @@ class Node:
             [-thickness, 0, -thickness], # v7
         ]
 
-        if not (offset_x == 0 and offset_y == 0 and offset_z == 0):
-            for idx, cuboid_vertex in enumerate(cuboid_vertices):
-                R_1 = glm.mat4()
-                R_2 = glm.mat4()
+        for idx, cuboid_vertex in enumerate(cuboid_vertices):
+            if offset_x == 0 and offset_z == 0:
+                if offset_y < 0:
+                    cuboid_vertices[idx][1] *= -1
+            else:
+                offset_vector = glm.normalize(glm.vec3(offset_x, offset_y, offset_z))
+                normal_vector = glm.normalize(glm.cross(glm.vec3(0, 1, 0), offset_vector))
+                cos_theta = glm.dot(glm.vec3(0, 1, 0), offset_vector)
 
-                if offset_x != 0 or offset_y != 0:
-                    R_1 = glm.rotate(-glm.acos(offset_y / glm.sqrt(glm.pow(offset_x, 2) + glm.pow(offset_y, 2))), (0, 0, 1))
-
-                if offset_x != 0 or offset_z != 0:
-                    R_2 = glm.rotate(-glm.acos(offset_x / glm.sqrt(glm.pow(offset_x, 2) + glm.pow(offset_z, 2))), (0, 1, 0))
-
-                cuboid_vertices[idx] = R_2 * R_1 * cuboid_vertex
+                R = glm.rotate(glm.acos(cos_theta), normal_vector)
+                cuboid_vertices[idx] = R * cuboid_vertex
 
         cuboid_indices = [
             [0,2,1],

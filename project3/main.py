@@ -71,8 +71,8 @@ uniform vec3 view_pos;
 
 vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_pos, vec3 view_dir, vec3 material_color, float material_shininess){
     float constant = 1.0f;
-    float linear = 0.015f;
-    float quadratic = 0.007f;
+    float linear = 0.00009f;
+    float quadratic = 0.000035f;
     
     // light components
     vec3 light_ambient = 0.1 * light_color;
@@ -102,9 +102,9 @@ vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_
     float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
 
     // combine results
-    // ambient *= attenuation;
-    // diffuse *= attenuation;
-    // specular *= attenuation;
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
 
     return (ambient + diffuse + specular);
 }
@@ -118,7 +118,7 @@ void main()
     else {
         // light and material properties
         int light_cnt = 1;
-        vec3 light_pos[3] = {vec3(-5, 5, -5), vec3(0, 10, -10), vec3(-16, 2, 20)};
+        vec3 light_pos[3] = {vec3(50, 50, 50), vec3(0, 10, -10), vec3(-16, 2, 20)};
         vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.9, 0.9, 0.9), vec3(1, 0, 0)};
 
         vec3 normal = normalize(vout_normal);    
@@ -244,7 +244,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     global mouse_pressed, g_cam, last_mouse_x_pos, last_mouse_y_pos
 
-    sensitivity = 0.02
+    sensitivity = 0.2
 
     x_offset = (x_pos - last_mouse_x_pos) * sensitivity
     y_offset = (y_pos - last_mouse_y_pos) * sensitivity

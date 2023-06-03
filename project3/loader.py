@@ -7,6 +7,7 @@ import glm
 import ctypes
 import numpy as np
 from node import Node as Joint
+import os
 
 class Loader:
     def __init__(self):
@@ -71,7 +72,18 @@ class Loader:
                     channel_stack.append(child)
 
     def parse_bvh(self, filepath):
+        # initialize member variables
         self.__is_animating = False
+        self.__filepath = ""
+        self.__root = None
+
+        self.frames = 0
+        self.frame_time = 1
+        
+        # for debugging...
+        self.__total_frame_cnt = 0
+        self.__channel_cnt = 0
+        self.__total_joint_cnt = 0
 
         with open(filepath, 'r') as f:
             lines = f.readlines()
@@ -143,17 +155,17 @@ class Loader:
 
     def print_bvh_data(self):
         print("---------------------------------------------")
-        print("file name: " + str(self.__filepath.split()[-1])) # TODO: p2 참고해서 filename 파싱
+        print("file name: " + os.path.basename(str(self.__filepath))) # TODO: p2 참고해서 filename 파싱
         print("number of frames: " + str(self.__total_frame_cnt))
         print("FPS: " + str(1 / self.frame_time))
         print("number of joints: " + str(self.__total_joint_cnt))
 
         visited = []
         dfs_joint_name = []
-        channel_stack = [self.__root]
+        joint_stack = [self.__root]
 
-        while channel_stack:
-            current_node = channel_stack.pop()
+        while joint_stack:
+            current_node = joint_stack.pop()
             if current_node not in visited:
                 visited.append(current_node)
 
@@ -161,22 +173,22 @@ class Loader:
                     dfs_joint_name.append(current_node.joint_name)
 
                 for child in reversed(current_node.children):
-                    channel_stack.append(child)
+                    joint_stack.append(child)
 
         print("all of joint name: " + str(dfs_joint_name))
 
     def prepare_vaos_line(self):
         visited = []
-        channel_stack = [self.__root]
+        joint_stack = [self.__root]
 
-        while channel_stack:
-            current_node = channel_stack.pop()
+        while joint_stack:
+            current_node = joint_stack.pop()
             if current_node not in visited:
                 visited.append(current_node)
                 current_node.prepare_vao_line()
 
                 for child in reversed(current_node.children):
-                    channel_stack.append(child)
+                    joint_stack.append(child)
         
         self.__root.update_tree_global_transform_skeleton()
 
