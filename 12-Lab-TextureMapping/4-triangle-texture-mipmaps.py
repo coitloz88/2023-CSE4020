@@ -3,6 +3,7 @@ from glfw.GLFW import *
 import glm
 import ctypes
 import numpy as np
+from PIL import Image
 
 g_cam_ang = 0.
 g_cam_height = .1
@@ -11,72 +12,39 @@ g_vertex_shader_src = '''
 #version 330 core
 
 layout (location = 0) in vec3 vin_pos; 
-layout (location = 1) in vec3 vin_normal; 
+layout (location = 1) in vec3 vin_color; 
+layout (location = 2) in vec2 vin_uv; 
 
-out vec3 vout_surface_pos;
-out vec3 vout_normal;
+out vec4 vout_color;
+out vec2 vout_uv;
 
 uniform mat4 MVP;
-uniform mat4 M;
 
 void main()
 {
+    // 3D points in homogeneous coordinates
     vec4 p3D_in_hcoord = vec4(vin_pos.xyz, 1.0);
+
     gl_Position = MVP * p3D_in_hcoord;
 
-    vout_surface_pos = vec3(M * vec4(vin_pos, 1));
-    vout_normal = normalize( mat3(inverse(transpose(M)) ) * vin_normal);
+    vout_color = vec4(vin_color, 1.);
+    vout_uv = vin_uv;
 }
 '''
 
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec3 vout_surface_pos;
-in vec3 vout_normal;  // interpolated normal
+in vec4 vout_color;
+in vec2 vout_uv;  // interpolated texture coordinates
 
 out vec4 FragColor;
 
-uniform vec3 view_pos;
+uniform sampler2D texture1;
 
 void main()
 {
-    // light and material properties
-    vec3 light_pos = vec3(3,2,4);
-    vec3 light_color = vec3(1,1,1);
-    vec3 material_color = vec3(1,0,0);
-    float material_shininess = 32.0;
-
-    // light components
-    vec3 light_ambient = 0.1*light_color;
-    vec3 light_diffuse = light_color;
-    vec3 light_specular = light_color;
-
-    // material components
-    vec3 material_ambient = material_color;
-    vec3 material_diffuse = material_color;
-    vec3 material_specular = vec3(1,1,1);  // for non-metal material
-
-    // ambient
-    vec3 ambient = light_ambient * material_ambient;
-
-    // for diffiuse and specular
-    vec3 normal = normalize(vout_normal);
-    vec3 surface_pos = vout_surface_pos;
-    vec3 light_dir = normalize(light_pos - surface_pos);
-
-    // diffuse
-    float diff = max(dot(normal, light_dir), 0);
-    vec3 diffuse = diff * light_diffuse * material_diffuse;
-
-    // specular
-    vec3 view_dir = normalize(view_pos - surface_pos);
-    vec3 reflect_dir = reflect(-light_dir, normal);
-    float spec = pow( max(dot(view_dir, reflect_dir), 0.0), material_shininess);
-    vec3 specular = spec * light_specular * material_specular;
-
-    vec3 color = ambient + diffuse + specular;
-    FragColor = vec4(color, 1.);
+    FragColor = texture(texture1, vout_uv);
 }
 '''
 
@@ -139,36 +107,13 @@ def key_callback(window, key, scancode, action, mods):
             elif key==GLFW_KEY_W:
                 g_cam_height += -.1
 
-def prepare_vao_cube():
+def prepare_vao_triangle():
     # prepare vertex data (in main memory)
-    # 8 vertices
     vertices = glm.array(glm.float32,
-        # position      normal
-        -1 ,  1 ,  1 , -0.577 ,  0.577,  0.577, # v0
-         1 ,  1 ,  1 ,  0.816 ,  0.408,  0.408, # v1
-         1 , -1 ,  1 ,  0.408 , -0.408,  0.816, # v2
-        -1 , -1 ,  1 , -0.408 , -0.816,  0.408, # v3
-        -1 ,  1 , -1 , -0.408 ,  0.408, -0.816, # v4
-         1 ,  1 , -1 ,  0.408 ,  0.816, -0.408, # v5
-         1 , -1 , -1 ,  0.577 , -0.577, -0.577, # v6
-        -1 , -1 , -1 , -0.816 , -0.408, -0.408, # v7
-    )
-
-    # prepare index data
-    # 12 triangles
-    indices = glm.array(glm.uint32,
-        0,2,1,
-        0,3,2,
-        4,5,6,
-        4,6,7,
-        0,1,5,
-        0,5,4,
-        3,6,2,
-        3,7,6,
-        1,2,6,
-        1,6,5,
-        0,7,3,
-        0,4,7,
+        # position      # color         # texture coordinates
+         0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  0.0, 0.0,  # v0
+         0.5, 0.0, 0.0,  0.0, 1.0, 0.0,  1.0, 0.0,  # v1
+         0.0, 0.5, 0.0,  0.0, 0.0, 1.0,  0.0, 1.0,  # v2
     )
 
     # create and activate VAO (vertex array object)
@@ -179,23 +124,20 @@ def prepare_vao_cube():
     VBO = glGenBuffers(1)   # create a buffer object ID and store it to VBO variable
     glBindBuffer(GL_ARRAY_BUFFER, VBO)  # activate VBO as a vertex buffer object
 
-    # create and activate EBO (element buffer object)
-    EBO = glGenBuffers(1)   # create a buffer object ID and store it to EBO variable
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)  # activate EBO as an element buffer object
-
     # copy vertex data to VBO
     glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
 
-    # copy index data to EBO
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy index data to the currently bound element buffer
-
     # configure vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * glm.sizeof(glm.float32), None)
     glEnableVertexAttribArray(0)
 
-    # configure vertex normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+    # configure vertex colors
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
     glEnableVertexAttribArray(1)
+
+    # configure texture coordinates
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+    glEnableVertexAttribArray(2)
 
     return VAO
 
@@ -210,7 +152,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, 800, '6-all-components-phong-avgnorm', None, None)
+    window = glfwCreateWindow(800, 800, '4-triangle-texture-mipmaps', None, None)
     if not window:
         glfwTerminate()
         return
@@ -224,48 +166,80 @@ def main():
 
     # get uniform locations
     MVP_loc = glGetUniformLocation(shader_program, 'MVP')
-    M_loc = glGetUniformLocation(shader_program, 'M')
-    view_pos_loc = glGetUniformLocation(shader_program, 'view_pos')
-
+    
     # prepare vaos
-    vao_cube = prepare_vao_cube()
+    vao_triangle = prepare_vao_triangle()
+
+    ############################################
+    # texture
+
+    # create texture
+    texture1 = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, texture1)
+
+    # set texture filtering parameters
+
+    # GL_TEXTURE_MIN_FILTER: used when the texture is displayed at a smaller size than its original resolution. 
+    # default: GL_NEAREST_MIPMAP_LINEAR
+    # GL_NEAREST
+    # GL_LINEAR
+    # GL_NEAREST_MIPMAP_NEAREST: takes the nearest mipmap to match the pixel size and uses nearest neighbor interpolation for texture sampling.
+    # GL_LINEAR_MIPMAP_NEAREST: takes the nearest mipmap level and samples that level using linear interpolation.
+    # GL_NEAREST_MIPMAP_LINEAR: linearly interpolates between the two mipmaps that most closely match the size of a pixel and samples the interpolated level via nearest neighbor interpolation.
+    # GL_LINEAR_MIPMAP_LINEAR: linearly interpolates between the two closest mipmaps and samples the interpolated level via linear interpolation.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR)
+
+    # GL_TEXTURE_MAG_FILTER: used when the texture is displayed at a larger size than its original resolution. 
+    # default: GL_LINEAR
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    try:
+        img = Image.open('./320px-Solarsystemscope_texture_8k_earth_daymap.jpg')
+        
+        # vertically filp the image 
+        # because OpenGL expects 0.0 on y-axis to be on the bottom edge, but images usually have 0.0 at the top of the y-axis
+        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+
+        # glTexImage2D(target, level, texture internalformat, width, height, border, image data format, image data type, data)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height, 0, GL_RGB, GL_UNSIGNED_BYTE, img.tobytes())
+    
+        # generate mipmaps
+        glGenerateMipmap(GL_TEXTURE_2D)
+
+        img.close()
+
+    except:
+        print("Failed to load texture")
+
+    ############################################
 
     # loop until the user closes the window
     while not glfwWindowShouldClose(window):
-        # enable depth test (we'll see details later)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
 
+        glUseProgram(shader_program)
+
         # projection matrix
-        P = glm.perspective(45, 1, 1, 20)
+        # use orthogonal projection (we'll see details later)
+        P = glm.ortho(-1,1,-1,1,-1,1)
 
         # view matrix
-        view_pos = glm.vec3(5*np.sin(g_cam_ang),g_cam_height,5*np.cos(g_cam_ang))
-        V = glm.lookAt(view_pos, glm.vec3(0,0,0), glm.vec3(0,1,0))
+        # rotate camera position with g_cam_ang / move camera up & down with g_cam_height
+        V = glm.lookAt(glm.vec3(.1*np.sin(g_cam_ang),g_cam_height,.1*np.cos(g_cam_ang)), glm.vec3(0,0,0), glm.vec3(0,1,0))
 
+        # modeling matrix
+        # M = glm.mat4()
+        # M = glm.scale(glm.vec3(5,5,5))
+        M = glm.scale(glm.vec3(.1,.1,.1))
 
-        # animating
-        t = glfwGetTime()
-
-        # rotation
-        th = np.radians(t*90)
-        R = glm.rotate(th, glm.vec3(0,1,0))
-
-        M = glm.mat4()
-
-        # # try applying rotation
-        # M = R
-
-        # update uniforms
+        # current frame: P*V*M
         MVP = P*V*M
-        glUseProgram(shader_program)
         glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
-        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
-        glUniform3f(view_pos_loc, view_pos.x, view_pos.y, view_pos.z)
 
-        # draw cube w.r.t. the current frame MVP
-        glBindVertexArray(vao_cube)
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, None)
+        # draw triangle w.r.t. the current frame
+        glBindVertexArray(vao_triangle)
+        glDrawArrays(GL_TRIANGLES, 0, 3)
 
         # swap front and back buffers
         glfwSwapBuffers(window)
@@ -278,3 +252,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

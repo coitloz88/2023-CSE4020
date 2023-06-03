@@ -25,7 +25,7 @@ void main()
     gl_Position = MVP * p3D_in_hcoord;
 
     vout_surface_pos = vec3(M * vec4(vin_pos, 1));
-    vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
+    vout_normal = normalize( mat3(inverse(transpose(M)) ) * vin_normal);
 }
 '''
 
@@ -55,7 +55,7 @@ void main()
     // material components
     vec3 material_ambient = material_color;
     vec3 material_diffuse = material_color;
-    vec3 material_specular = light_color;  // for non-metal material
+    vec3 material_specular = vec3(1,1,1);  // for non-metal material
 
     // ambient
     vec3 ambient = light_ambient * material_ambient;

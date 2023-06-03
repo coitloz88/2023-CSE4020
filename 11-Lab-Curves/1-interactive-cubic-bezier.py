@@ -3,6 +3,7 @@ from glfw.GLFW import *
 import glm
 import numpy as np
 
+WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 800
 
 g_control_points = [
@@ -133,8 +134,8 @@ def cursor_callback(window, xpos, ypos):
         # copy updateded control point positions to g_vbo_control_points
         copy_points_data(g_control_points, g_vbo_control_points)
 
-        # copy generated curve point positions from 
-        # updated control points to g_vbo_curve_points
+        # generate curve points from updated control points
+        # and copy them to g_vbo_curve_points
         curve_points = generate_curve_points(g_control_points)
         copy_points_data(curve_points, g_vbo_curve_points)
 
@@ -165,13 +166,13 @@ def copy_points_data(points, vbo):
     vertices = glm.array(points)
 
     # only copy vertex data to VBO and not allocating it
-    # glBufferSubData(taraget, offset, size, data)
+    # glBufferSubData(target, offset, size, data)
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.nbytes, vertices.ptr)
 
 def generate_curve_points(control_points):
     curve_points = []
 
-    for t in np.linspace(0, 1, 100): # linspace(start, stop, num)
+    for t in np.linspace(0, 1, 101): # linspace(start, stop, num)
         T = np.array([t**3, t**2, t, 1])
 
         # cubic Bezier basis matrix
@@ -200,7 +201,7 @@ def main():
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE) # for macOS
 
     # create a window and OpenGL context
-    window = glfwCreateWindow(800, WINDOW_HEIGHT, '1-interactive-bezier', None, None)
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, '1-interactive-bezier', None, None)
     if not window:
         glfwTerminate()
         return
@@ -222,8 +223,10 @@ def main():
     g_vao_control_points, g_vbo_control_points = initialize_vao_for_points(g_control_points)
     copy_points_data(g_control_points, g_vbo_control_points)
 
-    # prepare curve points vao & vbo
+    # generate initial curve points
     curve_points = generate_curve_points(g_control_points)
+
+    # prepare curve points vao & vbo
     g_vao_curve_points, g_vbo_curve_points = initialize_vao_for_points(curve_points)
     copy_points_data(curve_points, g_vbo_curve_points)
 
@@ -238,7 +241,7 @@ def main():
 
         # projection matrix & set MVP uniform
         # to make our camera space to have the same size as glfw screen space
-        P = glm.ortho(0,800, 0,WINDOW_HEIGHT, -1,1)
+        P = glm.ortho(0,WINDOW_WIDTH, 0,WINDOW_HEIGHT, -1,1)
         MVP = P
         glUniformMatrix4fv(unif_locs['MVP'], 1, GL_FALSE, glm.value_ptr(MVP))
 

@@ -38,13 +38,13 @@ void main()
     // material components
     vec3 material_ambient = material_color;
     vec3 material_diffuse = material_color;
-    vec3 material_specular = light_color;  // for non-metal material
+    vec3 material_specular = vec3(1,1,1);  // for non-metal material
 
     // ambient
     vec3 ambient = light_ambient * material_ambient;
 
     // for diffiuse and specular
-    vec3 normal = normalize(mat3(transpose(inverse(M))) * vin_normal);
+    vec3 normal = normalize( mat3(inverse(transpose(M)) ) * vin_normal);
     vec3 surface_pos = vec3(M * vec4(vin_pos, 1));
     vec3 light_dir = normalize(light_pos - surface_pos);
 
@@ -66,7 +66,7 @@ void main()
 g_fragment_shader_src = '''
 #version 330 core
 
-in vec4 vout_color;
+in vec4 vout_color;  // interpolated color
 
 out vec4 FragColor;
 
