@@ -31,13 +31,14 @@ g_vertex_shader_src = '''
 
 layout (location = 0) in vec3 vin_pos;
 layout (location = 1) in vec3 vin_material_color;
+layout (location = 2) in vec3 vin_normal; 
 
 out vec3 vout_surface_pos;
 out vec3 vout_material_color;
+out vec3 vout_normal;
 
 uniform mat4 MVP;
 uniform mat4 M;
-uniform vec3 color;
 
 void main()
 {
@@ -48,6 +49,12 @@ void main()
 
     vout_surface_pos = vec3(M * vec4(vin_pos, 1));
     vout_material_color = vin_material_color;
+
+    if(vin_normal.x == 0 && vin_normal.y == 0 && vin_normal.z == 0) {
+        vout_normal = vec3(0,0,0);
+    } else {
+        vout_normal = normalize( mat3(transpose(inverse(M))) * vin_normal);
+    }
 }
 '''
 
@@ -56,6 +63,7 @@ g_fragment_shader_src = '''
 
 in vec3 vout_surface_pos;
 in vec3 vout_material_color;
+in vec3 vout_normal;
 
 out vec4 FragColor;
 
@@ -103,8 +111,6 @@ vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_
 
 void main()
 {
-    FragColor = vec4(vout_material_color, 1.);
-    /*
     if(vout_normal.x == 0 && vout_normal.y == 0 && vout_normal.z == 0) {
         FragColor = vec4(vout_material_color, 1.);
     }
@@ -112,7 +118,7 @@ void main()
     else {
         // light and material properties
         int light_cnt = 1;
-        vec3 light_pos[3] = {vec3(6, 6, 6), vec3(0, 20, 0), vec3(-16, 2, 20)};
+        vec3 light_pos[3] = {vec3(5, 5, 5), vec3(0, 20, 0), vec3(-16, 2, 20)};
         vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
 
         vec3 normal = normalize(vout_normal);    
@@ -124,10 +130,9 @@ void main()
         }
 
         FragColor = vec4(color, 1.);
-    }*/
+    }
 }
 '''
-
 def load_shaders(vertex_shader_source, fragment_shader_source):
     # build and compile our shader program
     # ------------------------------------
@@ -427,7 +432,7 @@ def main():
                 if g_frame == g_loader.frames:
                     g_frame = 0 # 새로운 drop callback이 실행될 때 frame 초기화
                 
-            g_loader.draw_animation(g_P*V, MVP_loc, color_loc, g_frame)
+            g_loader.draw_animation(g_P*V, MVP_loc, color_loc, g_frame, M_loc)
 
         # swap front and back buffers
         glfwSwapBuffers(window)

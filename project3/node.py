@@ -116,59 +116,65 @@ class Node:
         # 36 vertices for 12 triangles
         thickness = 0.05
 
+        offset_x = self.link_transform_from_parent[3].x
+        offset_y = self.link_transform_from_parent[3].y
+        offset_z = self.link_transform_from_parent[3].z
+
         # offset이 y방향만 있는게 아니라 x, y, z 다 있으므로 그걸 고려해줘야함 
-        height = self.link_transform_from_parent[3].y
+        height = glm.sqrt(glm.pow(offset_x, 2) + glm.pow(offset_y, 2) + glm.pow(offset_z, 2))
 
-        vertices = glm.array(glm.float32,
-            # position            color
-            -thickness, height, thickness,  1, 1, 1, # v0
-            thickness, 0, thickness,  1, 1, 1, # v2
-            thickness, height, thickness,  1, 1, 1, # v1
+        cuboid_vertices = [
+            [-thickness, height, thickness], # v0
+            [thickness, height, thickness], # v1
+            [thickness, 0, thickness], # v2
+            [-thickness, 0,  thickness], # v3
+            [-thickness , height, -thickness], # v4
+            [thickness, height, -thickness], # v5
+            [thickness, 0, -thickness], # v6
+            [-thickness, 0, -thickness], # v7
+        ]
 
-            -thickness, height, thickness,  1, 1, 1, # v0
-            -thickness, 0,  thickness,  1, 1, 1, # v3
-            thickness, 0, thickness,  1, 1, 1, # v2
- 
-            -thickness , height, -thickness,  1, 1, 1, # v4
-            thickness, height, -thickness,  1, 1, 1, # v5
-            thickness, 0, -thickness,  1, 1, 1, # v6
+        if not (offset_x == 0 and offset_y == 0 and offset_z == 0):
+            for idx, cuboid_vertex in enumerate(cuboid_vertices):
+                R_1 = glm.mat4()
+                R_2 = glm.mat4()
 
-            -thickness , height, -thickness,  1, 1, 1, # v4
-            thickness, 0, -thickness,  1, 1, 1, # v6
-            -thickness, 0, -thickness,  1, 1, 1, # v7
+                if offset_x != 0 or offset_y != 0:
+                    R_1 = glm.rotate(-glm.acos(offset_y / glm.sqrt(glm.pow(offset_x, 2) + glm.pow(offset_y, 2))), (0, 0, 1))
 
-            -thickness, height, thickness,  1, 1, 1, # v0
-            thickness, height, thickness,  1, 1, 1, # v1
-            thickness, height, -thickness,  1, 1, 1, # v5
+                if offset_x != 0 or offset_z != 0:
+                    R_2 = glm.rotate(-glm.acos(offset_x / glm.sqrt(glm.pow(offset_x, 2) + glm.pow(offset_z, 2))), (0, 1, 0))
 
-            -thickness, height, thickness,  1, 1, 1, # v0
-            thickness, height, -thickness,  1, 1, 1, # v5
-            -thickness , height, -thickness,  1, 1, 1, # v4
+                cuboid_vertices[idx] = R_2 * R_1 * cuboid_vertex
 
-            -thickness, 0,  thickness,  1, 1, 1, # v3
-            thickness, 0, -thickness,  1, 1, 1, # v6
-            thickness, 0, thickness,  1, 1, 1, # v2
+        cuboid_indices = [
+            [0,2,1],
+            [0,3,2],
+            [4,5,6],
+            [4,6,7],
+            [0,1,5],
+            [0,5,4],
+            [3,6,2],
+            [3,7,6],
+            [1,2,6],
+            [1,6,5],
+            [0,7,3],
+            [0,4,7],
+        ]
+        
+        color = [1.0, 0.5, 1.0]
 
-            -thickness, 0,  thickness,  1, 1, 1, # v3
-            -thickness, 0, -thickness,  1, 1, 1, # v7
-            thickness, 0, -thickness,  1, 1, 1, # v6
-                        
-            thickness, height, thickness,  1, 1, 1, # v1
-            thickness, 0, thickness,  1, 1, 1, # v2
-            thickness, 0, -thickness,  1, 1, 1, # v6
-                        
-            thickness, height, thickness,  1, 1, 1, # v1
-            thickness, 0, -thickness,  1, 1, 1, # v6
-            thickness, height, -thickness,  1, 1, 1, # v5
-                        
-            -thickness, height, thickness,  1, 1, 1, # v0
-            -thickness, 0, -thickness,  1, 1, 1, # v7
-            -thickness, 0,  thickness,  1, 1, 1, # v3
-                        
-            -thickness, height, thickness,  1, 1, 1, # v0
-            -thickness, height, -thickness,  1, 1, 1, # v4
-            -thickness, 0, -thickness,  1, 1, 1, # v7
-        )
+        vertices = []
+
+        for idx, cuboid_index in enumerate(cuboid_indices):
+            vector1 = glm.vec3(cuboid_vertices[cuboid_index[1]]) - glm.vec3(cuboid_vertices[cuboid_index[0]])
+            vector2 = glm.vec3(cuboid_vertices[cuboid_index[2]]) - glm.vec3(cuboid_vertices[cuboid_index[0]])
+            one_vnormal = glm.normalize(glm.cross(vector1, vector2))
+            for index in cuboid_index:
+                vertices.append([cuboid_vertices[index][0], cuboid_vertices[index][1], cuboid_vertices[index][2], color[0], color[1], color[2], one_vnormal[0], one_vnormal[1], one_vnormal[2]])
+
+        vertices = np.concatenate(np.array(vertices, dtype='f4'))
+        vertices = glm.array(vertices)
 
         # create and activate VAO (vertex array object)
         VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
@@ -182,12 +188,16 @@ class Node:
         glBufferData(GL_ARRAY_BUFFER, vertices.nbytes, vertices.ptr, GL_STATIC_DRAW) # allocate GPU memory for and copy vertex data to the currently bound vertex buffer
 
         # configure vertex positions
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), None)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), None)
         glEnableVertexAttribArray(0)
 
-        # configure vertex colors
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
+        # configure vertex color
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(3*glm.sizeof(glm.float32)))
         glEnableVertexAttribArray(1)
+
+        # configure vertex normal
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * glm.sizeof(glm.float32), ctypes.c_void_p(6*glm.sizeof(glm.float32)))
+        glEnableVertexAttribArray(2)
 
         self.vao_box = VAO
 
@@ -205,16 +215,18 @@ class Node:
         glUniform3f(color_loc, color.r, color.g, color.b)
         glDrawArrays(GL_LINES, 0, 2)
 
-    def draw_node_box(self, VP, MVP_loc, color_loc):
-        MVP = glm.mat4()
-
+    def draw_node_box(self, VP, MVP_loc, color_loc, M_loc):
+        M = glm.mat4()
         if self.parent is not None:
-            MVP = VP * self.parent.get_global_transform()
+            M = self.parent.get_global_transform()
         else:
-            MVP = VP * self.get_global_transform()
+            M = self.get_global_transform()
+
+        MVP = VP * M
         color = self.get_color()
 
         glBindVertexArray(self.vao_box)
-        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))
+        glUniformMatrix4fv(MVP_loc, 1, GL_FALSE, glm.value_ptr(MVP))        
+        glUniformMatrix4fv(M_loc, 1, GL_FALSE, glm.value_ptr(M))
         glUniform3f(color_loc, color.r, color.g, color.b)
         glDrawArrays(GL_TRIANGLES, 0, 36)

@@ -142,6 +142,7 @@ class Loader:
         self.__filepath = filepath
 
     def print_bvh_data(self):
+        print("---------------------------------------------")
         print("file name: " + str(self.__filepath.split()[-1])) # TODO: p2 참고해서 filename 파싱
         print("number of frames: " + str(self.__total_frame_cnt))
         print("FPS: " + str(1 / self.frame_time))
@@ -194,7 +195,7 @@ class Loader:
         
         self.__root.update_tree_global_transform_skeleton()
 
-    def draw_animation(self, VP, MVP_loc, color_loc, frame):
+    def draw_animation(self, VP, MVP_loc, color_loc, frame, M_loc):
         '''
         그려야하는 box 개수만큼(root + joint 개수만큼),
         joint 배열을 순회하면서 해당 joint node의 draw를 호출
@@ -211,7 +212,7 @@ class Loader:
                 visited.append(current_node)
 
                 if self.__is_fill:
-                    current_node.draw_node_box(VP, MVP_loc, color_loc)
+                    current_node.draw_node_box(VP, MVP_loc, color_loc, M_loc)
                 else:
                     current_node.draw_node_line(VP, MVP_loc, color_loc)
 
