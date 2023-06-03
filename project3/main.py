@@ -309,14 +309,20 @@ def prepare_vao_frame():
 
 def prepare_vao_grid():
     # prepare vertex data (in main memory)
+    max_grid = 200
+    vertices = []
+    color = [1.0, 1.0, 1.0]
+    cnt = 0
 
-    vertices = glm.array(glm.float32,
-        -1.0, 0, -1, 1, 1, 1,
-        -1.0, 0, 1, 1, 1, 1, 
-        -0.9, 0, -1, 1, 1, 1, 
-        -0.9, 0, 1, 1, 1, 1, 
-        -0.8, 0, -1, 1, 1, 1, -0.8, 0, 1, 1, 1, 1, -0.7, 0, -1, 1, 1, 1, -0.7, 0, 1, 1, 1, 1, -0.6, 0, -1, 1, 1, 1, -0.6, 0, 1, 1, 1, 1, -0.5, 0, -1, 1, 1, 1, -0.5, 0, 1, 1, 1, 1, -0.4, 0, -1, 1, 1, 1, -0.4, 0, 1, 1, 1, 1, -0.3, 0, -1, 1, 1, 1, -0.3, 0, 1, 1, 1, 1, -0.2, 0, -1, 1, 1, 1, -0.2, 0, 1, 1, 1, 1, -0.1, 0, -1, 1, 1, 1, -0.1, 0, 1, 1, 1, 1, 0.0, 0, -1, 1, 1, 1, 0.0, 0, 1, 1, 1, 1, 0.1, 0, -1, 1, 1, 1, 0.1, 0, 1, 1, 1, 1, 0.2, 0, -1, 1, 1, 1, 0.2, 0, 1, 1, 1, 1, 0.3, 0, -1, 1, 1, 1, 0.3, 0, 1, 1, 1, 1, 0.4, 0, -1, 1, 1, 1, 0.4, 0, 1, 1, 1, 1, 0.5, 0, -1, 1, 1, 1, 0.5, 0, 1, 1, 1, 1, 0.6, 0, -1, 1, 1, 1, 0.6, 0, 1, 1, 1, 1, 0.7, 0, -1, 1, 1, 1, 0.7, 0, 1, 1, 1, 1, 0.8, 0, -1, 1, 1, 1, 0.8, 0, 1, 1, 1, 1, 0.9, 0, -1, 1, 1, 1, 0.9, 0, 1, 1, 1, 1, 1.0, 0, -1, 1, 1, 1, 1.0, 0, 1, 1, 1, 1, -1, 0, -1.0, 1, 1, 1, 1, 0, -1.0, 1, 1, 1, -1, 0, -0.9, 1, 1, 1, 1, 0, -0.9, 1, 1, 1, -1, 0, -0.8, 1, 1, 1, 1, 0, -0.8, 1, 1, 1, -1, 0, -0.7, 1, 1, 1, 1, 0, -0.7, 1, 1, 1, -1, 0, -0.6, 1, 1, 1, 1, 0, -0.6, 1, 1, 1, -1, 0, -0.5, 1, 1, 1, 1, 0, -0.5, 1, 1, 1, -1, 0, -0.4, 1, 1, 1, 1, 0, -0.4, 1, 1, 1, -1, 0, -0.3, 1, 1, 1, 1, 0, -0.3, 1, 1, 1, -1, 0, -0.2, 1, 1, 1, 1, 0, -0.2, 1, 1, 1, -1, 0, -0.1, 1, 1, 1, 1, 0, -0.1, 1, 1, 1, -1, 0, 0.0, 1, 1, 1, 1, 0, 0.0, 1, 1, 1, -1, 0, 0.1, 1, 1, 1, 1, 0, 0.1, 1, 1, 1, -1, 0, 0.2, 1, 1, 1, 1, 0, 0.2, 1, 1, 1, -1, 0, 0.3, 1, 1, 1, 1, 0, 0.3, 1, 1, 1, -1, 0, 0.4, 1, 1, 1, 1, 0, 0.4, 1, 1, 1, -1, 0, 0.5, 1, 1, 1, 1, 0, 0.5, 1, 1, 1, -1, 0, 0.6, 1, 1, 1, 1, 0, 0.6, 1, 1, 1, -1, 0, 0.7, 1, 1, 1, 1, 0, 0.7, 1, 1, 1, -1, 0, 0.8, 1, 1, 1, 1, 0, 0.8, 1, 1, 1, -1, 0, 0.9, 1, 1, 1, 1, 0, 0.9, 1, 1, 1, -1, 0, 1.0, 1, 1, 1, 1, 0, 1.0, 1, 1, 1
-    )
+    for i in range(-max_grid, max_grid + 1, 8):
+        calculated_max = max_grid * 0.1
+        calculated_position = i * 0.1
+        vertices.append([[calculated_max, 0, calculated_position], color, [-calculated_max, 0, calculated_position], color, [calculated_position, 0, calculated_max], color, [calculated_position, 0, -calculated_max], color])
+        cnt += 4
+
+    print(vertices)
+
+    vertices = glm.array(np.concatenate(np.array(vertices, dtype='f4')))
 
     # create and activate VAO (vertex array object)
     VAO = glGenVertexArrays(1)  # create a vertex array object ID and store it to VAO variable
@@ -345,7 +351,7 @@ def draw_frame(vao):
 
 def draw_grid(vao):
     glBindVertexArray(vao)
-    glDrawArrays(GL_LINES, 0, 84)
+    glDrawArrays(GL_LINES, 0, 204)
 
 def main():
     global g_P, g_cam, g_show_frame, g_loader, g_last_time, g_frame
