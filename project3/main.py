@@ -102,9 +102,9 @@ vec3 calcPointLight(vec3 light_pos, vec3 light_color, vec3 normal, vec3 surface_
     float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
 
     // combine results
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
+    // ambient *= attenuation;
+    // diffuse *= attenuation;
+    // specular *= attenuation;
 
     return (ambient + diffuse + specular);
 }
@@ -118,8 +118,8 @@ void main()
     else {
         // light and material properties
         int light_cnt = 1;
-        vec3 light_pos[3] = {vec3(5, 5, 5), vec3(0, 20, 0), vec3(-16, 2, 20)};
-        vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.52, 0.81, 0.92), vec3(1, 0, 0)};
+        vec3 light_pos[3] = {vec3(-5, 5, -5), vec3(0, 10, -10), vec3(-16, 2, 20)};
+        vec3 light_color[3] = {vec3(1, 1, 1), vec3(0.9, 0.9, 0.9), vec3(1, 0, 0)};
 
         vec3 normal = normalize(vout_normal);    
         vec3 view_dir = normalize(view_pos - vout_surface_pos);
@@ -262,7 +262,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
 def scroll_callback(window, x_scroll, y_scroll):
     global g_cam
-    g_cam.scroll(0.05, y_scroll)
+    g_cam.scroll(0.5, y_scroll)
 
 def drop_callback(window, filepath):
     global g_loader, g_global_adder, g_frame, g_last_time

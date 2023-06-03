@@ -114,7 +114,7 @@ class Node:
     def prepare_vao_box(self):
         # prepare vertex data (in main memory)
         # 36 vertices for 12 triangles
-        thickness = 0.05
+        thickness = 0.005
 
         offset_x = self.link_transform_from_parent[3].x
         offset_y = self.link_transform_from_parent[3].y
