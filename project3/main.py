@@ -244,7 +244,7 @@ def cursor_position_callback(window, x_pos, y_pos):
 
     global mouse_pressed, g_cam, last_mouse_x_pos, last_mouse_y_pos
 
-    sensitivity = 0.2
+    sensitivity = 0.08
 
     x_offset = (x_pos - last_mouse_x_pos) * sensitivity
     y_offset = (y_pos - last_mouse_y_pos) * sensitivity
@@ -265,7 +265,7 @@ def scroll_callback(window, x_scroll, y_scroll):
     g_cam.scroll(0.5, y_scroll)
 
 def drop_callback(window, filepath):
-    global g_loader, g_global_adder, g_frame, g_last_time
+    global g_loader, g_frame, g_last_time
 
     g_loader.parse_bvh(os.path.join(filepath[0]))
     g_loader.print_bvh_data()

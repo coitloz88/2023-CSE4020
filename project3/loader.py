@@ -128,9 +128,8 @@ class Loader:
 
                     if words[0] == 'End':
                         joint_name = words[0] + " " + words[1]
-                        self.__total_joint_cnt -= 1
 
-                    current_joint = Joint(parent_joint, joint_name, glm.vec3(1,1,1)) # TODO: End site는 이름 설정 X
+                    current_joint = Joint(parent_joint, joint_name, glm.vec3(1,1,1))
                     self.__total_joint_cnt += 1
                     
                     if words[0] == 'ROOT':
@@ -155,7 +154,7 @@ class Loader:
 
     def print_bvh_data(self):
         print("---------------------------------------------")
-        print("file name: " + os.path.basename(str(self.__filepath))) # TODO: p2 참고해서 filename 파싱
+        print("file name: " + os.path.basename(str(self.__filepath)))
         print("number of frames: " + str(self.__total_frame_cnt))
         print("FPS: " + str(1 / self.frame_time))
         print("number of joints: " + str(self.__total_joint_cnt))
@@ -168,14 +167,12 @@ class Loader:
             current_node = joint_stack.pop()
             if current_node not in visited:
                 visited.append(current_node)
-
-                if current_node.joint_name != "End Site": # TODO: Joint에 End effector도 포함되나?
-                    dfs_joint_name.append(current_node.joint_name)
+                dfs_joint_name.append(current_node.joint_name)
 
                 for child in reversed(current_node.children):
                     joint_stack.append(child)
 
-        print("all of joint name: " + str(dfs_joint_name))
+        print("list of all joint names: " + str(dfs_joint_name))
 
     def prepare_vaos_line(self):
         visited = []

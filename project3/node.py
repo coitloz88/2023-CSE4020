@@ -35,7 +35,6 @@ class Node:
         self.link_transform_from_parent = link_transformation
 
     def append_joint_transform(self, joint_transforms):
-        # TODO: 곱하는 순서가 position 먼저인지 rotation 먼저인지
         T_x = 0
         T_y = 0
         T_z = 0
@@ -114,7 +113,7 @@ class Node:
     def prepare_vao_box(self):
         # prepare vertex data (in main memory)
         # 36 vertices for 12 triangles
-        thickness = 0.5
+        thickness = 0.05
 
         offset_x = self.link_transform_from_parent[3].x
         offset_y = self.link_transform_from_parent[3].y
