@@ -307,7 +307,8 @@ def main():
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT)
 
     try:
-        img = Image.open('./plain-checkerboard.jpg')
+        current_dir, file = os.path.split(os.path.abspath(__file__))
+        img = Image.open(os.path.join(current_dir, './plain-checkerboard.jpg'))
         # img = Image.open('./320px-Solarsystemscope_texture_8k_earth_daymap-grayscale.jpg')
         
         # vertically filp the image 
